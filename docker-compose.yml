@@ -1,0 +1,54 @@
+# HINDSIGHT local stack: the enrichment microservice + a Python-capable n8n.
+#
+#   docker compose up --build
+#
+# n8n          → http://localhost:5678   (import n8n/hindsight_workflow.json)
+# enrichment   → http://localhost:8000   (GET /health, /metrics, /categories)
+#
+# The repo is mounted into n8n at /data, so the workflow's paths
+# (/data/incoming_docs, /data/output_docs, /data/extractors/...) resolve with no edits.
+
+services:
+  enrichment-api:
+    build: ./services/enrichment-api
+    container_name: hindsight-enrichment
+    ports:
+      - "8000:8000"
+    environment:
+      HINDSIGHT_LOG_LEVEL: "INFO"
+      HINDSIGHT_JSON_LOGS: "true"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  n8n:
+    build: ./n8n            # n8n + PyMuPDF + python-docx (see n8n/Dockerfile)
+    container_name: hindsight-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_PORT: "5678"
+      N8N_HOST: "localhost"
+      NODE_ENV: "production"
+      GENERIC_TIMEZONE: "Asia/Jerusalem"
+      # Execute Command is what runs the Python extractor:
+      NODE_FUNCTION_ALLOW_EXTERNAL: "*"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./:/data                       # repo → /data inside n8n
+      - ./samples:/data/incoming_seed:ro
+    depends_on:
+      - enrichment-api
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
+
+# ── n8n Cloud note ───────────────────────────────────────────────────────────
+# n8n Cloud disables the Execute Command node, so the Python extractor only runs
+# on a self-hosted instance like the one above. On Cloud, swap the "Extract text
+# + images" node for n8n's native "Extract from File" node (text-only — the
+# Gemini Vision branch needs the self-hosted extractor to pull embedded images).

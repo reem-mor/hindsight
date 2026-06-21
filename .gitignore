@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Env / secrets
+.env
+*.key
+
+# n8n / runtime data
+n8n_data/
+incoming_docs/*
+output_docs/*
+tmp_images/*
+!incoming_docs/.gitkeep
+!output_docs/.gitkeep
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Build intermediates
+samples/_*.png
