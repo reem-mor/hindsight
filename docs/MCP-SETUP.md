@@ -66,3 +66,8 @@ the initial deployment — re-check in the n8n UI after any credential rotation.
 
 Course MCP integration guidance is vendored under `.cursor/skills/mcp-integration/` (from
 `amdocs-ai-course`). Use when adding or debugging MCP servers.
+
+## 6. Full setup checklist (manual steps)
+
+See **[SETUP-GUIDE.md](SETUP-GUIDE.md)** — conversation summary, live audit results, Google
+Sheet headers, activation order, and what you must configure in n8n UI vs locally.

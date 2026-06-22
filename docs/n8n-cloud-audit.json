@@ -1,0 +1,103 @@
+{
+  "workflow_id": "aYEv22StywIPL3Rq",
+  "name": "HINDSIGHT \u2014 Postmortem Intelligence (Cloud)",
+  "active": false,
+  "nodes_total": 15,
+  "checks": [
+    {
+      "status": "ok",
+      "item": "Workflow reachable via API",
+      "detail": "HINDSIGHT \u2014 Postmortem Intelligence (Cloud)"
+    },
+    {
+      "status": "review",
+      "item": "Workflow active",
+      "detail": "False"
+    },
+    {
+      "status": "ok",
+      "item": "Node present: Submit a Postmortem",
+      "detail": ""
+    },
+    {
+      "status": "ok",
+      "item": "Node present: Gemini \u2014 Extract Incident",
+      "detail": ""
+    },
+    {
+      "status": "ok",
+      "item": "Node present: HINDSIGHT Enrich",
+      "detail": ""
+    },
+    {
+      "status": "ok",
+      "item": "Node present: Append to Registry",
+      "detail": ""
+    },
+    {
+      "status": "ok",
+      "item": "Node present: Page On-Call (SEV1)",
+      "detail": ""
+    },
+    {
+      "status": "ok",
+      "item": "Node present: Postmortem Filed",
+      "detail": ""
+    },
+    {
+      "status": "ok",
+      "item": "Node present: Is SEV1?",
+      "detail": ""
+    },
+    {
+      "status": "ok",
+      "item": "Gemini credential bound",
+      "detail": "{\"googlePalmApi\": {\"id\": \"466Fl1znBcikPxtF\", \"name\": \"Google Gemini(PaLM) Api account\"}}"
+    },
+    {
+      "status": "review",
+      "item": "Gemini model string",
+      "detail": "gemini-3-flash \u2014 try gemini-3-flash-preview if 404"
+    },
+    {
+      "status": "ok",
+      "item": "Google Sheets credential bound",
+      "detail": "{\"googleSheetsOAuth2Api\": {\"id\": \"6CH1fQ50fz9t2M9G\", \"name\": \"Google Sheets Amdocs Course API\"}}"
+    },
+    {
+      "status": "review",
+      "item": "Sheets document/tab",
+      "detail": "{\"__rl\": true, \"mode\": \"id\", \"value\": \"\", \"cachedResultName\": \"PASTE your HINDSIGHT registry spreadsheet ID here\"}"
+    },
+    {
+      "status": "ok",
+      "item": "Gmail credential (Page On-Call (SEV1))",
+      "detail": "{\"gmailOAuth2\": {\"id\": \"klYiZaTrlUMuEunt\", \"name\": \"Gmail Amdocs course API\"}}"
+    },
+    {
+      "status": "review",
+      "item": "Email To (Page On-Call (SEV1))",
+      "detail": "reem.mor3@gmail.com"
+    },
+    {
+      "status": "ok",
+      "item": "Gmail credential (Postmortem Filed)",
+      "detail": "{\"gmailOAuth2\": {\"id\": \"klYiZaTrlUMuEunt\", \"name\": \"Gmail Amdocs course API\"}}"
+    },
+    {
+      "status": "review",
+      "item": "Email To (Postmortem Filed)",
+      "detail": "reem.mor3@gmail.com"
+    },
+    {
+      "status": "ok",
+      "item": "Credentials in instance",
+      "detail": "{\"googleSheetsOAuth2Api\": [\"Google Sheets Amdocs Course API\", \"Google Sheets Re'em@reem.mor3\"], \"pineconeApi\": [\"Amdocs Course Pinecone account API\"], \"perplexityApi\": [\"Perplexity account\"], \"gmailOAuth2\": [\"Gmail account 2\", \"Gmail account\", \"Gmail Amdocs course API\", \"Gmail Re'em@1\"], \"telegramApi\": [\"CourseOps Bot\", \"Telegram account 2\", \"Telegram account  @ newbotn8natomic\", \"Telegram n8n atomic1008\"], \"googlePalmApi\": [\"Google Gemini(PaLM) Api account\"], \"slackOAuth2Api\": [\"Slack OAuth2 API\"], \"anthropicApi\": [\"Anthropic n8n course May26\", \"Anthropic account\", \"Anthropic n8n course\"], \"openAiApi\": [\"OpenAI n8n course May26\", \"n8n free OpenAI API credits\", \"OpenAi n8n course\"], \"googleDriveOAuth2Api\": [\"Google Drive Amdocs course API\", \"Google Drive OAuth2 API\", \"Google Drive account 2\", \"Google Drive account\"], \"googleCalendarOAuth2Api\": [\"Google Calendar account 2\", \"Google Calendar account @reem.mor\", \"Google Calendar Re'em@reem.mor3\"], \"serpApi\": [\"SerpApi account\"]}"
+    },
+    {
+      "status": "ok",
+      "item": "Recent executions",
+      "detail": "483=success, 481=success"
+    }
+  ]
+}

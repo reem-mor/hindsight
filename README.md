@@ -305,6 +305,8 @@ Every requirement, plus most of the bonus track:
 
 ---
 
+Full step-by-step setup (Sheet, activation, credentials): **[docs/SETUP-GUIDE.md](docs/SETUP-GUIDE.md)**
+
 ## Model & live-credential notes (read before grading)
 
 - **Gemini model string.** The assignment specifies `gemini-3-flash`; the workflow uses it
