@@ -1,0 +1,93 @@
+{
+  "mcpServers": {
+    "n8n-workflows": {
+      "command": "npx",
+      "args": ["-y", "n8n-mcp"],
+      "envFile": "${workspaceFolder}/.env",
+      "timeout": 120000,
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "N8N_API_URL": "${env:N8N_API_URL}",
+        "N8N_API_KEY": "${env:N8N_API_KEY}"
+      }
+    },
+
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "timeout": 120000
+    },
+
+    "aws-api": {
+      "command": "uvx",
+      "args": ["awslabs.aws-api-mcp-server@latest"],
+      "timeout": 120000,
+      "env": {
+        "AWS_PROFILE": "${env:AWS_PROFILE}",
+        "AWS_REGION": "${env:AWS_REGION}",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+
+    "bedrock-kb": {
+      "command": "uvx",
+      "args": ["awslabs.bedrock-kb-retrieval-mcp-server@latest"],
+      "timeout": 120000,
+      "env": {
+        "AWS_PROFILE": "${env:AWS_PROFILE}",
+        "AWS_REGION": "${env:AWS_REGION}",
+        "FASTMCP_LOG_LEVEL": "ERROR",
+        "BEDROCK_KB_RERANKING_ENABLED": "false"
+      }
+    },
+
+    "aws-knowledge": {
+      "type": "http",
+      "url": "https://knowledge-mcp.global.api.aws"
+    },
+
+    "lovable": {
+      "type": "http",
+      "url": "https://mcp.lovable.dev",
+      "auth": {
+        "CLIENT_ID": "${env:LOVABLE_CLIENT_ID}"
+      }
+    },
+
+    "course-tools": {
+      "command": "${env:AMDOCS_COURSE_ROOT}/lectures/08_mcp/.venv/Scripts/python.exe",
+      "args": ["${env:AMDOCS_COURSE_ROOT}/lectures/08_mcp/server/tools_server.py"],
+      "timeout": 120000,
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "timeout": 120000,
+      "env": {
+        "CONTEXT7_API_KEY": "${env:CONTEXT7_API_KEY}"
+      }
+    },
+
+    "perplexity": {
+      "command": "npx",
+      "args": ["-yq", "@perplexity-ai/mcp-server"],
+      "timeout": 120000,
+      "env": {
+        "PERPLEXITY_API_KEY": "${env:PERPLEXITY_API_KEY}"
+      }
+    },
+
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "timeout": 120000
+    }
+  }
+}

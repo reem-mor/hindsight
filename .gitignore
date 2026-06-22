@@ -30,3 +30,9 @@ tmp_images/*
 
 # Build intermediates
 samples/_*.png
+docs/_tmp_*.html
+# Generated sample artifacts (reproduce with samples/make_*_pdf_sample.py)
+samples/*.pdf
+
+# Script tooling
+scripts/node_modules/

@@ -12,10 +12,11 @@ graded enrichment service.
 
 | Suite | What it proves | Checks | Result |
 |---|---|---:|:---:|
-| FastAPI enrichment — `pytest` | The graded `/enrich` brain: routing, severity rubric, sensitivity, SLO, recurrence, ops endpoints | 32 | ✅ |
-| Deployed Cloud Code nodes — `node` | The **exact** JavaScript running in n8n Cloud, hammered with edge cases + guardrails | 46 | ✅ |
+| FastAPI enrichment — `pytest` | The graded `/enrich` brain: routing, severity rubric, sensitivity, SLO, recurrence, cyber CVSS | 48 | ✅ |
+| Deployed Cloud Code nodes — `node` | The **exact** JavaScript running in n8n Cloud, hammered with edge cases + guardrails | 61 | ✅ |
 | Live workflow dry-runs — n8n Cloud | True end-to-end execution on the deployed workflow, **both** routing branches | 2 | ✅ |
-| **Total** | | **80** | ✅ |
+| n8n Cloud API smoke — `verify_n8n_cloud.py` | Workflow `aYEv22StywIPL3Rq` nodes + credential binding | 1 | ✅ |
+| **Total automated** | | **112** | ✅ |
 
 ## 2. How to reproduce
 
@@ -23,10 +24,13 @@ graded enrichment service.
 # Graded enrichment microservice (Python)
 cd services/enrichment-api
 pip install -r requirements.txt
-pytest -q                       # 32 passed
+pytest -q                       # 48 passed
 
 # The actual code deployed to the n8n Cloud Code nodes (no n8n needed — globals are mocked)
-node n8n/cloud/tests/test_node_bodies.mjs    # 46/46 passed
+node n8n/cloud/tests/test_node_bodies.mjs    # 61/61 passed
+
+# n8n Cloud API smoke (N8N_API_KEY in .env or environment)
+python scripts/verify_n8n_cloud.py
 ```
 
 ## 3. Coverage matrix

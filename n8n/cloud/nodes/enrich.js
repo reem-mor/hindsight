@@ -13,9 +13,15 @@ const SERVICES = [
   { name: "reporting-db", aliases: ["data warehouse","analytics db","regulatory reporting","dwh"], team: "Data-Platform", tier: "high", slo: 99.0, jurisdictions: ["UKGC","NJ-DGE","MGM"] },
   { name: "edge-cdn", aliases: ["cdn","edge","waf","reverse proxy","ingress"], team: "Platform-SRE", tier: "high", slo: 99.9, jurisdictions: ["GLOBAL"] },
   { name: "notifications", aliases: ["email service","sms gateway","push","comms"], team: "Engagement-Eng", tier: "standard", slo: 99.0, jurisdictions: ["GLOBAL"] },
-  { name: "internal-tooling", aliases: ["jenkins","ci","ci/cd","deploy pipeline","grafana","internal dashboard"], team: "DevEx", tier: "internal", slo: 99.0, jurisdictions: ["GLOBAL"] }
+  { name: "internal-tooling", aliases: ["jenkins","ci","ci/cd","deploy pipeline","grafana","internal dashboard"], team: "DevEx", tier: "internal", slo: 99.0, jurisdictions: ["GLOBAL"] },
+  { name: "siem", aliases: ["splunk","elastic siem","security monitoring","log pipeline","wazuh","sentinel"], team: "SecOps", tier: "high", slo: 99.5, jurisdictions: ["GLOBAL"] },
+  { name: "endpoint-security", aliases: ["edr","antivirus","av","crowdstrike","defender","endpoint protection","xdr"], team: "SecOps", tier: "high", slo: 99.5, jurisdictions: ["GLOBAL"] },
+  { name: "vulnerability-scanner", aliases: ["nessus","qualys","vuln scanner","tenable","scanner","trivy","snyk"], team: "SecOps", tier: "standard", slo: 99.0, jurisdictions: ["GLOBAL"] }
 ];
-const TYPE_ROUTING = { "security":"Security-IR","data-incident":"Compliance-Eng","deployment-failure":"DevEx","capacity":"SRE-Platform","dependency-failure":"SRE-Platform","configuration":"SRE-Platform","outage":"SRE-Platform","degradation":"SRE-Platform","other":"SRE-Platform" };
+const TYPE_ROUTING = { "security":"Security-IR","data-incident":"Compliance-Eng","deployment-failure":"DevEx","capacity":"SRE-Platform","dependency-failure":"SRE-Platform","configuration":"SRE-Platform","outage":"SRE-Platform","degradation":"SRE-Platform","other":"SRE-Platform","vulnerability-scan":"SecOps","malware":"SecOps","phishing":"SecOps","intrusion":"Security-IR","ddos":"Platform-SRE" };
+// Cyber hybrid: types implying data exposure (-> confidential) / active compromise (-> severity floor).
+const SECURITY_SENSITIVE_TYPES = { "security":1,"data-incident":1,"intrusion":1,"malware":1,"phishing":1 };
+const SECURITY_FLOOR_TYPES = { "security":1,"data-incident":1,"intrusion":1,"malware":1 };
 const REVIEW_THRESHOLD = 0.7;
 const BUDGET_BREACH_FRACTION = 0.5;
 
@@ -67,7 +73,14 @@ function impactHits(text) {
 function round1(x) { return Math.round(x * 10) / 10; }
 function round3(x) { return Math.round(x * 1000) / 1000; }
 
-function scoreSeverity(reported, incidentType, resolved, jurisdictions, ttr, summary) {
+function cvssBand(cvss) {
+  if (cvss >= 9.0) return "SEV1";
+  if (cvss >= 7.0) return "SEV2";
+  if (cvss >= 4.0) return "SEV3";
+  return null;
+}
+
+function scoreSeverity(reported, incidentType, resolved, jurisdictions, ttr, summary, cvss) {
   let score = 0;
   const rationale = [];
   if (resolved.length) {
@@ -88,13 +101,26 @@ function scoreSeverity(reported, incidentType, resolved, jurisdictions, ttr, sum
   if (t >= 120) { score += 3; rationale.push("downtime " + Math.round(t) + " min >= 2h (+3)"); }
   else if (t >= 30) { score += 2; rationale.push("downtime " + Math.round(t) + " min >= 30m (+2)"); }
   else if (t > 0) { score += 1; rationale.push("downtime " + Math.round(t) + " min (+1)"); }
-  if (incidentType === "security" || incidentType === "data-incident") { score += 3; rationale.push("incident type '" + incidentType + "' carries regulatory weight (+3)"); }
+  if (SECURITY_FLOOR_TYPES[incidentType]) { score += 3; rationale.push("incident type '" + incidentType + "' carries regulatory weight (+3)"); }
+
+  let cvssFloor = null;
+  if (cvss !== null && cvss !== undefined && Number(cvss) > 0) {
+    cvssFloor = cvssBand(Number(cvss));
+    const cvssPts = { SEV1: 5, SEV2: 3, SEV3: 1 }[cvssFloor] || 0;
+    if (cvssPts) { score += cvssPts; rationale.push("CVSS " + Number(cvss).toFixed(1) + " (" + cvssFloor + "-class) (+" + cvssPts + ")"); }
+    else { rationale.push("CVSS " + Number(cvss).toFixed(1) + " low (+0)"); }
+  }
 
   let computed;
   if (score >= 9) computed = "SEV1";
   else if (score >= 6) computed = "SEV2";
   else if (score >= 3) computed = "SEV3";
   else computed = "SEV4";
+
+  if (cvssFloor && SEV_RANK[cvssFloor] < SEV_RANK[computed]) {
+    computed = cvssFloor;
+    rationale.push("severity floored to " + cvssFloor + " by CVSS " + Number(cvss).toFixed(1));
+  }
 
   const delta = Math.abs(SEV_RANK[computed] - (SEV_RANK[reported] || 3));
   const review = delta >= 1;
@@ -105,16 +131,16 @@ function scoreSeverity(reported, incidentType, resolved, jurisdictions, ttr, sum
   return { computed: computed, score: score, rationale: rationale, review: review };
 }
 
-function classifySensitivity(incidentType, jurisdictions, entitiesBlob, summary) {
+function classifySensitivity(incidentType, jurisdictions, entitiesBlob, summary, cvss) {
   const text = (String(summary || "") + " " + String(entitiesBlob || "")).toLowerCase();
   const realJx = (jurisdictions || []).filter(function (j) { return j && j.toUpperCase() !== "GLOBAL"; });
   const signals = [
-    ["security incident", incidentType === "security"],
-    ["data incident", incidentType === "data-incident"],
+    ["security-class incident (" + incidentType + ")", !!SECURITY_SENSITIVE_TYPES[incidentType]],
     ["PII / customer-data reference", /\bpii|customer data|personal data\b/.test(text)],
     ["monetary / payment exposure", /\bfunds?|payment|charge|refund|monetary\b/.test(text)],
     ["regulatory exposure", /\bregulator|ukgc|dge|fine\b/.test(text)],
-    ["multi-jurisdiction", realJx.length >= 2]
+    ["multi-jurisdiction", realJx.length >= 2],
+    ["high-severity CVE (CVSS >= 7.0)", cvss !== null && cvss !== undefined && Number(cvss) >= 7.0]
   ];
   const triggered = [];
   for (const s of signals) { if (s[1]) triggered.push(s[0]); }
@@ -187,12 +213,15 @@ for (let idx = 0; idx < items.length; idx++) {
 
   const m = g.metrics || {};
   const ttr = Number(m.ttr_minutes || 0);
-  const verdict = scoreSeverity(g.severity || "SEV3", g.incident_type || "other", resolved, jurisdictions, ttr, g.summary || "");
+  let cvss = (g.cvss_score === null || g.cvss_score === undefined) ? null : Number(g.cvss_score);
+  cvss = (cvss === null || !isFinite(cvss)) ? null : Math.max(0, Math.min(10, cvss));  // non-numeric -> null (parity with Pydantic rejecting bad floats)
+  const cveIds = Array.isArray(g.cve_ids) ? g.cve_ids : [];
+  const verdict = scoreSeverity(g.severity || "SEV3", g.incident_type || "other", resolved, jurisdictions, ttr, g.summary || "", cvss);
 
   const entitiesBlob = []
     .concat(ent.people || [], ent.teams || [], ent.systems || [], ent.error_codes || [])
     .join(" ");
-  const sens = classifySensitivity(g.incident_type || "other", jurisdictions, entitiesBlob, g.summary || "");
+  const sens = classifySensitivity(g.incident_type || "other", jurisdictions, entitiesBlob, g.summary || "", cvss);
 
   let primary = null;
   if (resolved.length) {
@@ -220,6 +249,11 @@ for (let idx = 0; idx < items.length; idx++) {
   if (g.blameless_quality === "poor") tags.push("blameless-coaching");
   const tagsUniq = Array.from(new Set(tags));
 
+  let routingTag;
+  if (verdict.computed === "SEV1" || (cvss !== null && cvss >= 9.0)) routingTag = "escalate";
+  else if (tagsUniq.indexOf("needs-review") !== -1 || tagsUniq.indexOf("severity-review") !== -1) routingTag = "needs-review";
+  else routingTag = "auto-approved";
+
   out.push({ json: {
     document_id: uuid(),
     processed_at: new Date().toISOString(),
@@ -241,7 +275,10 @@ for (let idx = 0; idx < items.length; idx++) {
     sensitivity_rationale: sens.rationale,
     slo_impact: slo,
     recurrence_fingerprint: fp,
+    cvss_score: cvss,
+    cve_ids: cveIds,
     routing_tags: tagsUniq,
+    routing_tag: routingTag,
     action_item_total: totalActions,
     action_items_without_owner: noOwner,
     open_p0_actions: openP0,

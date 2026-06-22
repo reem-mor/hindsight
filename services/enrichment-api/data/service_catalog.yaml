@@ -107,6 +107,30 @@ services:
     slo: 99.0
     jurisdictions: ["GLOBAL"]
 
+  # ── Cyber / SecOps estate (hybrid scenario) ───────────────────────────────
+  # Security-domain services so SIEM exports and vuln scans resolve to an owner
+  # the same deterministic way reliability incidents do.
+  - name: "siem"
+    aliases: ["splunk", "elastic siem", "security monitoring", "log pipeline", "wazuh", "sentinel"]
+    team: "SecOps"
+    tier: "high"
+    slo: 99.5
+    jurisdictions: ["GLOBAL"]
+
+  - name: "endpoint-security"
+    aliases: ["edr", "antivirus", "av", "crowdstrike", "defender", "endpoint protection", "xdr"]
+    team: "SecOps"
+    tier: "high"
+    slo: 99.5
+    jurisdictions: ["GLOBAL"]
+
+  - name: "vulnerability-scanner"
+    aliases: ["nessus", "qualys", "vuln scanner", "tenable", "scanner", "trivy", "snyk"]
+    team: "SecOps"
+    tier: "standard"
+    slo: 99.0
+    jurisdictions: ["GLOBAL"]
+
 # Incident-type → default routing hint when no service is confidently matched.
 type_routing:
   security: "Security-IR"
@@ -118,3 +142,9 @@ type_routing:
   outage: "SRE-Platform"
   degradation: "SRE-Platform"
   other: "SRE-Platform"
+  # Cyber/SecOps hybrid types.
+  vulnerability-scan: "SecOps"
+  malware: "SecOps"
+  phishing: "SecOps"
+  intrusion: "Security-IR"
+  ddos: "Platform-SRE"

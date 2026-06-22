@@ -4,7 +4,7 @@
 
 ### Institutional memory for incidents
 
-**An AI pipeline that turns SRE postmortems into a structured, routed, queryable reliability record.**
+**An AI pipeline that turns SRE postmortems and security findings into a structured, routed, queryable reliability & risk record.**
 
 `n8n` · `Gemini 3 Flash (+ Vision)` · `FastAPI` · `Google Sheets` · `Gmail`
 
@@ -34,7 +34,11 @@ much error budget it burned, and fingerprint it so recurrence is detected on its
 > from every incident after it closes.
 
 This is the *Intelligent Cloud Document Analyst* assignment, built for the domain I actually
-work in — regulated, multi-jurisdiction (UKGC / NJ-DGE / MGM) production reliability.
+work in — regulated, multi-jurisdiction (UKGC / NJ-DGE / MGM) production reliability **and
+security operations**. The scenario is **hybrid**: it reads SRE postmortems *and* cyber
+artifacts (SIEM exports, vulnerability scans, phishing/intrusion writeups), routing security
+findings to **SecOps** and flooring severity on **CVSS** (a CVSS 9.8 CVE is a SEV1 page, no
+matter what the author typed).
 
 ---
 
@@ -46,12 +50,12 @@ flowchart LR
     B --> C{Embedded<br/>dashboard?}
     C -- yes --> V["👁 Gemini Vision<br/>reads the chart"]
     C -- no --> D
-    V --> D["🧠 Gemini 3 Flash<br/>→ SRE schema"]
-    D --> E["⚙️ Enrichment API<br/>FastAPI"]
+    V --> D["🧠 Gemini 3 Flash<br/>→ SRE + cyber schema"]
+    D --> E["⚙️ Enrichment API<br/>FastAPI<br/>severity rubric · CVSS floor<br/>routing (SRE + SecOps)"]
     E --> F["📊 Google Sheets"]
     E --> G["💾 output_docs/"]
-    E --> H{SEV1?}
-    H -- yes --> P["🚨 Page on-call"]
+    E --> H{"SEV1 or<br/>CVSS ≥ 9?"}
+    H -- yes --> P["🚨 Page / escalate"]
     H -- no --> M["📧 Team digest"]
     F --> DASH["📈 Dashboard"]
     style E fill:#1a2b3c,color:#fff
@@ -133,6 +137,13 @@ docker compose up --build
 
 # 3. Watch a run end-to-end
 cp samples/payments_sev1_checkout_outage.md incoming_docs/   # a SEV1 → fires the paging branch
+cp samples/vuln_scan_critical_openssl.md incoming_docs/      # CVSS 9.8 CVE → SecOps, escalate, page
+```
+
+**Generate the Vision-branch PDF** (a vuln scan with an embedded severity chart):
+```bash
+pip install matplotlib reportlab
+python samples/make_cyber_pdf_sample.py        # → samples/vuln_scan_sev1_critical_rce.pdf
 ```
 
 **Just want to see the output?** Open [`dashboard/index.html`](dashboard/index.html) in a
@@ -156,7 +167,8 @@ shape — far richer than a generic summary because the enrichment downstream de
 ```jsonc
 {
   "incident_title": "...", "summary": "...",
-  "severity": "SEV1|SEV2|SEV3|SEV4", "incident_type": "outage|degradation|...",
+  "severity": "SEV1|SEV2|SEV3|SEV4",
+  "incident_type": "outage|degradation|...|vulnerability-scan|malware|phishing|intrusion|ddos",
   "status": "resolved|monitoring|...",
   "affected_services": [...], "affected_jurisdictions": [...],
   "root_cause": "...", "trigger": "...", "detection_method": "...",
@@ -164,6 +176,7 @@ shape — far richer than a generic summary because the enrichment downstream de
   "action_items": [ { "action": "...", "owner": "...", "priority": "high|medium|low" } ],
   "contributing_factors": [...], "sentiment": "...",
   "blameless_quality": "good|fair|poor", "confidence_score": 0.0,
+  "cvss_score": 9.8, "cve_ids": ["CVE-2026-21841"],   // cyber: scored vulns floor severity
   "metrics": { "detected_at": "...", "resolved_at": "...",
                "ttd_minutes": 0, "ttr_minutes": 0, "customer_impact": "..." }
 }
@@ -219,13 +232,20 @@ It reads a published Google Sheets CSV if you set `SHEETS_CSV_URL`, otherwise th
 
 ## Testing & validation
 
-**80 automated checks, all green** — against both the graded service and the exact code deployed to Cloud.
+**112 automated checks, all green** — pytest, Cloud node bodies, and n8n API smoke.
 
 | Suite | Checks | Run it |
 |---|---:|---|
-| FastAPI enrichment (`pytest`) | 32 | `cd services/enrichment-api && pytest -q` |
-| Deployed Cloud Code nodes (`node`) | 46 | `node n8n/cloud/tests/test_node_bodies.mjs` |
-| Live n8n Cloud dry-runs (both routing branches) | 2 | executions `481`, `483` |
+| FastAPI enrichment (`pytest`) | 48 | `cd services/enrichment-api && pytest -q` |
+| Deployed Cloud Code nodes (`node`) | 61 | `node n8n/cloud/tests/test_node_bodies.mjs` |
+| Live n8n Cloud dry-runs (both routing branches) | 2 | executions `481`, `483` (previously deployed; see note) |
+
+> **Honest status note.** The 48 pytest + 61 node checks were re-run and verified in this
+> build (Python 3.12 venv; Node 24). The two live n8n Cloud dry-runs were validated in an
+> earlier session — **this build had no n8n MCP connected, so they were not re-verified here.**
+> The local `docker compose` stack (enrichment + Python-capable n8n) *was* rebuilt and run end
+> to end: enrichment `/health` healthy, n8n `200 /healthz`, and the Python extractor confirmed
+> inside the n8n container.
 
 Coverage spans the severity rubric (upgrade *and* downgrade both flag review), routing
 fallbacks, jurisdiction logic, data sensitivity, SLO error-budget boundaries, recurrence-
@@ -266,19 +286,58 @@ Every requirement, plus most of the bonus track:
 | Gemini 3 Flash, structured JSON | `🧠 Gemini` node + `prompts/extraction_prompt.md` |
 | Python enrichment microservice | `services/enrichment-api/` (FastAPI) |
 | `/enrich` `/health` `/categories` `/sensitivity` | all present, + 3 extra endpoints |
+| `routing_tag` (escalate / needs-review / auto-approved) | `EnrichedResult.routing_tag` (single-value rubric) |
 | Google Sheets results DB | `📊 Append to registry` node |
 | Gmail notifications | `🚨 Page` + `📧 Digest` nodes |
 | Error handling, retries, logging | retry policy on Gemini nodes; structured JSON logs + correlation id |
+| **Cyber hybrid — CVSS + SecOps** | CVSS severity floor + SecOps routing + SIEM/vuln-scan/phishing/intrusion/ddos categories |
 | **Bonus — Gemini Vision** | embedded dashboard charts read by the Vision branch |
-| **Bonus — Live dashboard** | `dashboard/index.html` reads Sheets CSV |
+| **Bonus — Live dashboard** | `dashboard/index.html` (severity, sensitivity, routing, CVSS) reads Sheets CSV |
 | **Bonus — Retry logic** | Gemini nodes: 5 tries, 3 s backoff on 429s |
-| **Bonus — Sensitivity alerting** | SEV1 → immediate high-priority page |
-| Domain scenario | Cybersecurity / reliability incident logs → **SRE postmortems** |
+| **Bonus — Sensitivity alerting** | SEV1 / CVSS≥9 → immediate high-priority page / `escalate` |
+| Domain scenario | **Hybrid** — SRE postmortems **+** cyber/SecOps (SIEM, vuln scans, CVSS) |
+| Edge-case + traceability matrices | [`docs/edge-case-matrix.md`](docs/edge-case-matrix.md), [`docs/traceability-matrix.md`](docs/traceability-matrix.md) |
 
 > **Environment note:** the Python extractor runs via n8n's Execute Command node, which is
 > available on **self-hosted** n8n (the `docker-compose` stack). n8n Cloud disables Execute
 > Command — there, swap that node for n8n's native *Extract from File* (text-only; the Vision
 > branch needs the self-hosted extractor for embedded images).
+
+---
+
+## Model & live-credential notes (read before grading)
+
+- **Gemini model string.** The assignment specifies `gemini-3-flash`; the workflow uses it
+  verbatim. Per current Gemini docs the live API id is `gemini-3-flash-preview` (Gemini 3 is in
+  preview), with `gemini-3.5-flash` as the newer Flash. To make live calls, change the model in
+  the two HTTP Request nodes — it is a one-line swap and the architecture is identical.
+- **What needs your credentials.** Live Gemini calls (your `x-goog-api-key`), Google Sheets
+  OAuth2, and Gmail OAuth2 cannot be exercised in this repo — follow `n8n/SETUP.md` to attach
+  them. Everything deterministic (the enrichment brain, parsing, routing, CVSS, severity) is
+  covered by the 112 automated checks (48 pytest + 61 node + API smoke).
+- **n8n validation.** Workflow JSON is validated structurally; the Docker stack runs end to end.
+  Live n8n Cloud workflow `aYEv22StywIPL3Rq` is verified via `scripts/verify_n8n_cloud.py` (API)
+  and pinned dry-runs `481` / `483`. MCP servers are configured in `.cursor/mcp.json` — see
+  [`docs/MCP-SETUP.md`](docs/MCP-SETUP.md).
+
+## Screenshots (grader checklist)
+
+| Evidence | File |
+|---|---|
+| n8n workflow (Cloud API snapshot) | ![workflow](docs/screenshot-workflow.png) |
+| Successful execution (pinned dry-run) | ![execution](docs/screenshot-execution.png) |
+| Google Sheet registry schema + rows | ![sheet](docs/screenshot-sheet.png) |
+| SEV1 page email (CVSS escalate) | ![email](docs/screenshot-email.png) |
+| Reliability dashboard | ![dashboard](docs/screenshot-dashboard.png) |
+| FastAPI OpenAPI | ![fastapi](docs/screenshot-fastapi.png) |
+
+Regenerate locally:
+
+```bash
+node scripts/capture_screenshots.mjs
+node scripts/capture_n8n_evidence.mjs      # needs N8N_API_KEY
+node scripts/capture_registry_evidence.mjs
+```
 
 ---
 

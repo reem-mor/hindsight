@@ -18,6 +18,7 @@ from .config import get_settings
 from .enrichment import classify_sensitivity, enrich
 from .logging_setup import configure_logging, correlation_id
 from .models import (
+    INCIDENT_TYPES,
     CategoriesResponse,
     EnrichedResult,
     GeminiResult,
@@ -122,11 +123,7 @@ def metrics() -> str:
 def categories() -> CategoriesResponse:
     return CategoriesResponse(
         severities=[s.value for s in Severity],
-        incident_types=[
-            "outage", "degradation", "data-incident", "security",
-            "deployment-failure", "capacity", "dependency-failure",
-            "configuration", "other",
-        ],
+        incident_types=INCIDENT_TYPES,
         sensitivities=["public", "internal", "confidential"],
         teams=CATALOG.teams,
     )
@@ -174,6 +171,8 @@ def sensitivity_endpoint(payload: SensitivityRequest) -> SensitivityResponse:
         affected_jurisdictions=payload.affected_jurisdictions,
         entities_blob=blob,
         summary=payload.summary,
+        cvss_score=payload.cvss_score,
+        cve_ids=payload.cve_ids,
     )
     return SensitivityResponse(sensitivity=sens, rationale=rationale)
 
@@ -189,6 +188,7 @@ def score_severity_endpoint(payload: SeverityRequest) -> SeverityResponse:
         metrics=payload.metrics,
         summary=payload.summary,
         catalog=CATALOG,
+        cvss_score=payload.cvss_score,
     )
     return SeverityResponse(
         reported_severity=payload.reported_severity,

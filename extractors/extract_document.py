@@ -53,22 +53,27 @@ def extract_pdf(path: str, image_dir: str) -> dict:
     images: list[dict] = []
     base = os.path.splitext(os.path.basename(path))[0]
 
-    with fitz.open(path) as doc:
-        for page_index, page in enumerate(doc, start=1):
-            text_parts.append(page.get_text("text"))
-            for img_index, img in enumerate(page.get_images(full=True)):
-                xref = img[0]
-                try:
-                    pix = fitz.Pixmap(doc, xref)
-                    if pix.n - pix.alpha >= 4:  # CMYK/other → convert to RGB
-                        pix = fitz.Pixmap(fitz.csRGB, pix)
-                    out = os.path.join(image_dir, f"{base}_p{page_index}_{img_index}.png")
-                    pix.save(out)
-                    images.append({"path": out, "page": page_index})
-                    pix = None
-                except Exception as exc:  # noqa: BLE001
-                    # Don't fail the whole extraction on one bad image.
-                    images.append({"path": None, "page": page_index, "error": str(exc)})
+    try:
+        with fitz.open(path) as doc:
+            for page_index, page in enumerate(doc, start=1):
+                text_parts.append(page.get_text("text"))
+                for img_index, img in enumerate(page.get_images(full=True)):
+                    xref = img[0]
+                    try:
+                        pix = fitz.Pixmap(doc, xref)
+                        if pix.n - pix.alpha >= 4:  # CMYK/other → convert to RGB
+                            pix = fitz.Pixmap(fitz.csRGB, pix)
+                        out = os.path.join(image_dir, f"{base}_p{page_index}_{img_index}.png")
+                        pix.save(out)
+                        images.append({"path": out, "page": page_index})
+                        pix = None
+                    except Exception as exc:  # noqa: BLE001
+                        # Don't fail the whole extraction on one bad image.
+                        images.append({"path": None, "page": page_index, "error": str(exc)})
+    except Exception as exc:  # noqa: BLE001
+        # Corrupt / password-protected / non-PDF content: degrade to a clean,
+        # structured error instead of crashing the workflow node.
+        return _err(os.path.basename(path), "pdf", f"could not parse PDF: {exc}")
 
     text = "\n".join(text_parts).strip()
     return {
@@ -120,15 +125,30 @@ def extract_text(path: str, file_type: str) -> dict:
 def extract(path: str, image_dir: str) -> dict:
     if not os.path.isfile(path):
         return _err(os.path.basename(path), "unknown", f"file not found: {path}")
+    if os.path.getsize(path) == 0:
+        return _err(os.path.basename(path), os.path.splitext(path)[1].lstrip("."), "empty file (0 bytes)")
     ext = os.path.splitext(path)[1].lower()
     os.makedirs(image_dir, exist_ok=True)
     if ext == ".pdf":
-        return extract_pdf(path, image_dir)
-    if ext == ".docx":
-        return extract_docx(path)
-    if ext in (".txt", ".md", ".markdown", ".log"):
-        return extract_text(path, ext.lstrip("."))
-    return _err(os.path.basename(path), ext.lstrip("."), f"unsupported file type: {ext}")
+        result = extract_pdf(path, image_dir)
+    elif ext == ".docx":
+        result = extract_docx(path)
+    elif ext in (".txt", ".md", ".markdown", ".log"):
+        result = extract_text(path, ext.lstrip("."))
+    else:
+        return _err(os.path.basename(path), ext.lstrip("."), f"unsupported file type: {ext}")
+
+    # Skip text-less documents UNLESS they carry a usable image for the Vision
+    # branch (a scanned/image-only PDF still has something to analyse). Only count
+    # images that actually exported — failed extractions are recorded as
+    # {"path": null, ...} and must not be mistaken for Vision-ready content.
+    usable_image = any(img.get("path") for img in result.get("images", []))
+    if result.get("ok") and not result.get("extracted_text", "").strip() and not usable_image:
+        return _err(
+            result["filename"], result["file_type"],
+            "no extractable text (empty or scanned document with no text layer or usable images)",
+        )
+    return result
 
 
 def main() -> int:

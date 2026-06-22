@@ -129,6 +129,46 @@ const PAYMENTS = {
   e = await enrich({ affected_services: ['casino'], incident_type: 'outage', summary: '🔥 '.repeat(5000) + 'múlti-byte ünïcödé', root_cause: 'x' });
   ok('robust.unicode', e && e.computed_severity);
 
+  // 13) CVSS critical floors to SEV1, escalates, confidential, SecOps --------
+  e = await enrich({ incident_type: 'vulnerability-scan', severity: 'SEV3', affected_services: ['nessus'], cvss_score: 9.8, cve_ids: ['CVE-2026-21841'], summary: 'remote code execution finding', root_cause: 'unpatched lib', metrics: { ttr_minutes: 5 } });
+  eq('cvss.sev1', e.computed_severity, 'SEV1');
+  eq('cvss.routing_tag', e.routing_tag, 'escalate');
+  eq('cvss.sensitivity', e.sensitivity, 'confidential');
+  eq('cvss.department', e.department, 'SecOps');
+  eq('cvss.echo', [e.cvss_score, e.cve_ids], [9.8, ['CVE-2026-21841']]);
+  ok('cvss.page', e.routing_tags.includes('page-oncall'));
+
+  // 14) Medium CVSS floors to >= SEV3 even with no other signal ---------------
+  e = await enrich({ incident_type: 'vulnerability-scan', severity: 'SEV4', affected_services: ['nessus'], cvss_score: 4.5, summary: 'medium finding' });
+  ok('cvss.med_floor', ['SEV1', 'SEV2', 'SEV3'].includes(e.computed_severity), e.computed_severity);
+
+  // 15) Low CVSS does not floor and is not confidential by CVSS --------------
+  e = await enrich({ incident_type: 'vulnerability-scan', severity: 'SEV4', affected_services: ['nessus'], cvss_score: 2.0, summary: 'informational', root_cause: 'x', action_items: [{ action: 'note', owner: 'SecOps', priority: 'P2' }], metrics: { ttr_minutes: 0 } });
+  ok('cvss.low_nofloor', ['SEV3', 'SEV4'].includes(e.computed_severity), e.computed_severity);
+
+  // 16) routing_tag auto-approved on a clean minor incident ------------------
+  e = await enrich({ incident_type: 'degradation', severity: 'SEV4', affected_services: ['notifications'], affected_jurisdictions: [], summary: 'minor internal email delay', root_cause: 'queue backlog', action_items: [{ action: 'tune', owner: 'Dana', priority: 'P2' }], confidence_score: 0.9, metrics: { ttr_minutes: 0 } });
+  eq('routing.auto', e.routing_tag, 'auto-approved');
+
+  // 17) routing_tag needs-review on low confidence ---------------------------
+  e = await enrich({ incident_type: 'other', severity: 'SEV3', confidence_score: 0.3, root_cause: '', action_items: [], affected_services: [], metrics: {}, summary: 's' });
+  eq('routing.needs_review', e.routing_tag, 'needs-review');
+
+  // 18) intrusion -> Security-IR, ddos -> Platform-SRE -----------------------
+  e = await enrich({ incident_type: 'intrusion', affected_services: ['nope-xyz'], summary: 'active intrusion' });
+  eq('intrusion.dept', e.department, 'Security-IR');
+  e = await enrich({ incident_type: 'ddos', affected_services: ['nope-xyz'], summary: 'volumetric flood' });
+  eq('ddos.dept', e.department, 'Platform-SRE');
+
+  // 19) CVSS clamp parity with the FastAPI brain (0-10) ----------------------
+  e = await enrich({ incident_type: 'vulnerability-scan', affected_services: ['nessus'], cvss_score: 15.0, summary: 'x' });
+  eq('cvss.clamp', e.cvss_score, 10);
+
+  // 20) Non-numeric CVSS -> null (parity: Pydantic rejects bad floats) --------
+  e = await enrich({ incident_type: 'vulnerability-scan', affected_services: ['nessus'], cvss_score: 'oops', summary: 'x', root_cause: 'y', action_items: [{ action: 'a', owner: 'SecOps' }], metrics: { ttr_minutes: 0 } });
+  eq('cvss.nan_null', e.cvss_score, null);
+  ok('cvss.nan_nofloor', ['SEV3', 'SEV4'].includes(e.computed_severity), e.computed_severity);
+
   // ---- Parse-node guardrails ------------------------------------------------
   let p = await parseNode({ candidates: [{ content: { parts: [{ text: '{"incident_title":"X","severity":"SEV3"}' }] } }] }, { correlationId: 'c1', sourceFilename: 'f.md' });
   eq('parse.clean.title', p.incident_title, 'X');

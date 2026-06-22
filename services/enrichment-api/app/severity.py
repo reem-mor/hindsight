@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .models import IncidentMetrics, Severity
+from .models import SECURITY_FLOOR_TYPES, IncidentMetrics, Severity
 from .routing import ServiceCatalog, ServiceEntry
 
 # Signals that escalate severity regardless of the reported label.
@@ -52,6 +52,17 @@ def _impact_hits(text: str) -> list[str]:
     return hits
 
 
+def _cvss_band(cvss: float) -> Severity | None:
+    """Map a CVSS base score to the minimum severity it justifies."""
+    if cvss >= 9.0:
+        return Severity.SEV1
+    if cvss >= 7.0:
+        return Severity.SEV2
+    if cvss >= 4.0:
+        return Severity.SEV3
+    return None
+
+
 def score_severity(
     *,
     reported: Severity,
@@ -61,6 +72,7 @@ def score_severity(
     metrics: IncidentMetrics,
     summary: str,
     catalog: ServiceCatalog,  # reserved for future tier weighting tweaks
+    cvss_score: float | None = None,
 ) -> SeverityVerdict:
     score = 0
     rationale: list[str] = []
@@ -102,10 +114,24 @@ def score_severity(
         score += 1
         rationale.append(f"downtime {ttr:.0f} min (+1)")
 
-    # 5. Security / data incidents carry an inherent floor.
-    if incident_type in {"security", "data-incident"}:
+    # 5. Security / active-compromise incidents carry an inherent floor.
+    if incident_type in SECURITY_FLOOR_TYPES:
         score += 3
         rationale.append(f"incident type '{incident_type}' carries regulatory weight (+3)")
+
+    # 6. CVSS (cyber hybrid): a scored CVE adds rubric weight AND, below, floors
+    #    the band — a critical vuln is SEV1 even when no internal service matched.
+    cvss_floor: Severity | None = None
+    if cvss_score is not None and cvss_score > 0:
+        cvss_floor = _cvss_band(cvss_score)
+        cvss_pts = {Severity.SEV1: 5, Severity.SEV2: 3, Severity.SEV3: 1}.get(cvss_floor, 0)
+        if cvss_pts:
+            score += cvss_pts
+            rationale.append(
+                f"CVSS {cvss_score:.1f} ({cvss_floor.value}-class) (+{cvss_pts})"
+            )
+        else:
+            rationale.append(f"CVSS {cvss_score:.1f} low (+0)")
 
     # Map score → severity band.
     if score >= 9:
@@ -116,6 +142,11 @@ def score_severity(
         computed = Severity.SEV3
     else:
         computed = Severity.SEV4
+
+    # CVSS floor: never rate a scored vulnerability lower than its CVSS band.
+    if cvss_floor is not None and _SEVERITY_RANK[cvss_floor] < _SEVERITY_RANK[computed]:
+        computed = cvss_floor
+        rationale.append(f"severity floored to {cvss_floor.value} by CVSS {cvss_score:.1f}")
 
     # Review needed when rubric and reported label differ by >= 1 band.
     delta = abs(_SEVERITY_RANK[computed] - _SEVERITY_RANK[reported])

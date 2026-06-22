@@ -17,6 +17,21 @@ from datetime import datetime, timezone
 correlation_id: ContextVar[str] = ContextVar("correlation_id", default="-")
 
 
+class CorrelationIdFilter(logging.Filter):
+    """Stamp every record with the current correlation id.
+
+    Without this, records emitted outside a request scope (e.g. catalog load at
+    import, or third-party loggers) lack the ``correlation_id`` attribute the
+    text formatter interpolates, which raises at format time. The filter makes
+    both the text and JSON formatters safe in every code path.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if not hasattr(record, "correlation_id"):
+            record.correlation_id = correlation_id.get()
+        return True
+
+
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload = {
@@ -46,6 +61,7 @@ _RESERVED = set(logging.LogRecord("", 0, "", 0, "", (), None).__dict__.keys()) |
 
 def configure_logging(level: str = "INFO", json_logs: bool = True) -> None:
     handler = logging.StreamHandler(sys.stdout)
+    handler.addFilter(CorrelationIdFilter())
     if json_logs:
         handler.setFormatter(JsonFormatter())
     else:

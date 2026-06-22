@@ -21,9 +21,11 @@ from datetime import datetime, timezone
 
 from .config import Settings
 from .models import (
+    SECURITY_SENSITIVE_TYPES,
     EnrichedResult,
     GeminiResult,
     Sensitivity,
+    Severity,
     SloImpact,
 )
 from .routing import ServiceCatalog
@@ -53,18 +55,20 @@ def classify_sensitivity(
     affected_jurisdictions: list[str],
     entities_blob: str,
     summary: str,
+    cvss_score: float | None = None,
+    cve_ids: list[str] | None = None,
 ) -> tuple[Sensitivity, list[str]]:
     """public / internal / confidential."""
     rationale: list[str] = []
     text = f"{summary} {entities_blob}".lower()
 
     confidential_signals = [
-        ("security incident", incident_type == "security"),
-        ("data incident", incident_type == "data-incident"),
+        (f"security-class incident ({incident_type})", incident_type in SECURITY_SENSITIVE_TYPES),
         ("PII / customer-data reference", bool(re.search(r"\bpii|customer data|personal data\b", text))),
         ("monetary / payment exposure", bool(re.search(r"\bfunds?|payment|charge|refund|monetary\b", text))),
         ("regulatory exposure", bool(re.search(r"\bregulator|ukgc|dge|fine\b", text))),
         ("multi-jurisdiction", len([j for j in affected_jurisdictions if j and j.upper() != "GLOBAL"]) >= 2),
+        ("high-severity CVE (CVSS >= 7.0)", cvss_score is not None and cvss_score >= 7.0),
     ]
     triggered = [label for label, hit in confidential_signals if hit]
     if triggered:
@@ -148,6 +152,7 @@ def enrich(g: GeminiResult, settings: Settings, catalog: ServiceCatalog) -> Enri
         metrics=g.metrics_obj,
         summary=g.summary,
         catalog=catalog,
+        cvss_score=g.cvss_score,
     )
 
     # Sensitivity.
@@ -159,6 +164,8 @@ def enrich(g: GeminiResult, settings: Settings, catalog: ServiceCatalog) -> Enri
         affected_jurisdictions=jurisdictions,
         entities_blob=entities_blob,
         summary=g.summary,
+        cvss_score=g.cvss_score,
+        cve_ids=g.cve_ids,
     )
 
     # SLO impact — driven by the most critical resolved service.
@@ -204,6 +211,15 @@ def enrich(g: GeminiResult, settings: Settings, catalog: ServiceCatalog) -> Enri
     # De-dup while preserving order.
     tags = list(dict.fromkeys(tags))
 
+    # Single-value routing decision (assignment rubric: escalate / needs-review /
+    # auto-approved), derived from the richer tag set.
+    if verdict.computed == Severity.SEV1 or (g.cvss_score is not None and g.cvss_score >= 9.0):
+        routing_tag = "escalate"
+    elif "needs-review" in tags or "severity-review" in tags:
+        routing_tag = "needs-review"
+    else:
+        routing_tag = "auto-approved"
+
     return EnrichedResult(
         document_id=str(uuid.uuid4()),
         processed_at=_now_iso(),
@@ -224,7 +240,10 @@ def enrich(g: GeminiResult, settings: Settings, catalog: ServiceCatalog) -> Enri
         slo_impact=slo,
         recurrence_fingerprint=fp,
         recurrence_seen_count=seen_count,
+        cvss_score=g.cvss_score,
+        cve_ids=g.cve_ids,
         routing_tags=tags,
+        routing_tag=routing_tag,
         action_item_total=total_actions,
         action_items_without_owner=no_owner,
         open_p0_actions=open_p0,

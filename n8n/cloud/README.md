@@ -32,7 +32,7 @@ fan-out to **Append to Registry** (Google Sheets) and **Is SEV1?** → **Page On
 ## Test the deployed logic
 
 ```bash
-node tests/test_node_bodies.mjs     # 46/46 passed — no n8n required
+node tests/test_node_bodies.mjs     # 61/61 passed — no n8n required
 ```
 
 ## One-time setup before activating

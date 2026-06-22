@@ -87,6 +87,25 @@ A fingerprint (`sha1` of incident type + sorted services + root-cause keywords) 
 seen this?" automatic. The Sheets registry is the durable store of fingerprints; the dashboard
 surfaces repeat offenders so chronic failure modes get prioritised.
 
+### Cyber/SecOps hybrid layer
+The same engine reads cybersecurity artifacts (SIEM exports, vulnerability scans,
+phishing/intrusion writeups), not just reliability postmortems:
+
+- **CVSS is a severity floor.** A scored vulnerability is never rated below the band its CVSS
+  justifies — `>= 9.0 → SEV1`, `>= 7.0 → SEV2`, `>= 4.0 → SEV3` — so a critical CVE pages even
+  when no internal service is matched. CVSS also adds rubric points and is clamped to 0–10.
+- **SecOps routing.** New incident types route deterministically: `vulnerability-scan`,
+  `malware`, `phishing → SecOps`; `intrusion → Security-IR`; `ddos → Platform-SRE`. The catalog
+  gains `siem`, `endpoint-security`, and `vulnerability-scanner` services owned by SecOps.
+- **CVSS-aware sensitivity.** A CVSS `>= 7.0` finding (or a security-class incident type) is
+  classified `confidential`.
+- **Single-value routing rubric.** Alongside the rich `routing_tags`, every record gets a
+  `routing_tag` of `escalate` (SEV1 / CVSS≥9), `needs-review` (low confidence or rubric
+  disagreement), or `auto-approved` — the literal triage decision the assignment asks for.
+
+The Python brain (`services/enrichment-api`) and the deployed JavaScript node
+(`n8n/cloud/nodes/enrich.js`) implement this identically, asserted by parallel test suites.
+
 ## Observability of the tool itself
 The enrichment service is self-observable: structured JSON logs with a **correlation id** that
 is minted at extraction time and threaded through Gemini → enrich → Sheets, plus a Prometheus
@@ -98,8 +117,8 @@ is minted at extraction time and threaded through Gemini → enrich → Sheets, 
 |---|---|---|
 | Orchestration | n8n (self-hosted) | Watch folder, call Gemini, call the API, write Sheets + Gmail |
 | Extraction | PyMuPDF, python-docx | Text **and** embedded dashboard images out of pdf/docx/md |
-| Reasoning | Gemini 3 Flash (+ Vision) | Postmortem → structured SRE schema; charts → metrics |
-| Decision | FastAPI microservice | Severity rubric, routing, SLO burn, recurrence, gating |
+| Reasoning | Gemini 3 Flash (+ Vision) | Postmortem / SIEM / vuln-scan → structured SRE+cyber schema; charts → metrics |
+| Decision | FastAPI microservice | Severity rubric, CVSS floor, SRE+SecOps routing, SLO burn, recurrence, gating |
 | Registry | Google Sheets | Durable incident record + fingerprint store |
 | Notification | Gmail | SEV1 page; team digest otherwise |
 | Insight | HTML/Chart.js dashboard | Severity mix, MTTR trend, failing services, repeat offenders |

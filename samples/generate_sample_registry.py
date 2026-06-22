@@ -156,17 +156,91 @@ def build() -> list[dict]:
             "affected_services_resolved": [service],
             "affected_jurisdictions": [j for j in jx if j != "GLOBAL"] or ["GLOBAL"],
             "sensitivity": sensitivity,
+            "cvss_score": None,
+            "cve_ids": [],
             "ttr_minutes": ttr,
             "status": random.choice(["resolved", "resolved", "resolved", "monitoring"]),
             "recurrence_fingerprint": fp,
             "routing_tags": tags,
+            "routing_tag": "escalate" if sev == "SEV1" else "auto-approved",
             "action_item_total": action_total,
             "action_items_without_owner": unowned,
             "summary": f"{root}. Impact on {service} across {', '.join(j for j in jx if j!='GLOBAL') or 'global'}.",
         })
 
+    records.extend(_cyber_records(now))
     records.sort(key=lambda r: r["processed_at"])
     return records
+
+
+def _cyber_records(now: datetime) -> list[dict]:
+    """A handful of cyber/SecOps incidents so the hybrid scenario is visible on
+    the dashboard: CVSS scores, CVE ids, SecOps routing, and the escalate /
+    needs-review / auto-approved routing_tag rubric."""
+    def at(days_ago: int, idx: int) -> tuple[str, str]:
+        ts = now - timedelta(days=days_ago, hours=7)
+        return ts.isoformat(), f"vuln-{ts.strftime('%Y%m%d')}-{idx:03d}"
+
+    out: list[dict] = []
+
+    ts, did = at(9, 100)
+    out.append({
+        "document_id": did, "processed_at": ts,
+        "incident_title": "Critical RCE in payments TLS library (CVE-2026-21841)",
+        "incident_type": "vulnerability-scan", "reported_severity": "SEV3",
+        "computed_severity": "SEV1", "department": "SecOps",
+        "affected_services_resolved": ["payments-gateway", "wallet"],
+        "affected_jurisdictions": ["UKGC", "NJ-DGE", "MGM"], "sensitivity": "confidential",
+        "cvss_score": 9.8, "cve_ids": ["CVE-2026-21841"], "ttr_minutes": 0,
+        "status": "monitoring", "recurrence_fingerprint": "cve2026218410",
+        "routing_tags": ["auto-filed", "exec-escalation", "page-oncall", "regulatory-review", "severity-review"],
+        "routing_tag": "escalate", "action_item_total": 3, "action_items_without_owner": 0,
+        "summary": "Authenticated Nessus scan flagged a remote code execution vuln in the TLS library on 23 payment hosts.",
+    })
+
+    ts, did = at(6, 101)
+    out.append({
+        "document_id": did, "processed_at": ts,
+        "incident_title": "Credential brute force against identity (limited ATO)",
+        "incident_type": "intrusion", "reported_severity": "SEV2",
+        "computed_severity": "SEV2", "department": "Security-IR",
+        "affected_services_resolved": ["identity"], "affected_jurisdictions": ["GLOBAL"],
+        "sensitivity": "confidential", "cvss_score": None, "cve_ids": [], "ttr_minutes": 44,
+        "status": "resolved", "recurrence_fingerprint": "intrusionatob1",
+        "routing_tags": ["auto-filed", "exec-escalation", "needs-review"],
+        "routing_tag": "needs-review", "action_item_total": 3, "action_items_without_owner": 1,
+        "summary": "Splunk ES fired on distributed credential stuffing; 3 accounts accessed, sessions revoked.",
+    })
+
+    ts, did = at(1, 102)
+    out.append({
+        "document_id": did, "processed_at": ts,
+        "incident_title": "Phishing harvesting compliance staff KYC creds",
+        "incident_type": "phishing", "reported_severity": "SEV2",
+        "computed_severity": "SEV2", "department": "SecOps",
+        "affected_services_resolved": ["kyc"], "affected_jurisdictions": ["UKGC", "NJ-DGE"],
+        "sensitivity": "confidential", "cvss_score": None, "cve_ids": [], "ttr_minutes": 30,
+        "status": "monitoring", "recurrence_fingerprint": "phishkyc0001",
+        "routing_tags": ["auto-filed", "exec-escalation", "regulatory-review"],
+        "routing_tag": "needs-review", "action_item_total": 3, "action_items_without_owner": 0,
+        "summary": "Look-alike KYC portal harvested credentials from 2 compliance analysts; domain blocked.",
+    })
+
+    ts, did = at(3, 103)
+    out.append({
+        "document_id": did, "processed_at": ts,
+        "incident_title": "Medium-severity dependency vuln in internal tooling",
+        "incident_type": "vulnerability-scan", "reported_severity": "SEV3",
+        "computed_severity": "SEV3", "department": "SecOps",
+        "affected_services_resolved": ["internal-tooling"], "affected_jurisdictions": ["GLOBAL"],
+        "sensitivity": "internal", "cvss_score": 5.6, "cve_ids": ["CVE-2026-11002"], "ttr_minutes": 0,
+        "status": "resolved", "recurrence_fingerprint": "cve2026110020",
+        "routing_tags": ["auto-filed"], "routing_tag": "auto-approved",
+        "action_item_total": 1, "action_items_without_owner": 0,
+        "summary": "Trivy flagged a medium CVE in a CI image dependency; patched in the next build.",
+    })
+
+    return out
 
 
 if __name__ == "__main__":

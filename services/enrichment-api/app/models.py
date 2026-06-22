@@ -29,6 +29,41 @@ class Sensitivity(str, Enum):
 
 
 # --------------------------------------------------------------------------- #
+# Scenario vocabulary (hybrid: SRE reliability + cyber/SecOps)
+# --------------------------------------------------------------------------- #
+# Reliability incident types the rubric has always understood.
+SRE_INCIDENT_TYPES: list[str] = [
+    "outage", "degradation", "data-incident", "security",
+    "deployment-failure", "capacity", "dependency-failure",
+    "configuration", "other",
+]
+
+# Cyber/SecOps incident types added by the hybrid layer (SIEM, vuln scans, etc.).
+CYBER_INCIDENT_TYPES: list[str] = [
+    "vulnerability-scan", "malware", "phishing", "intrusion", "ddos",
+]
+
+INCIDENT_TYPES: list[str] = SRE_INCIDENT_TYPES + CYBER_INCIDENT_TYPES
+
+# Types that imply customer/regulatory data exposure -> classify confidential.
+SECURITY_SENSITIVE_TYPES: frozenset[str] = frozenset(
+    {"security", "data-incident", "intrusion", "malware", "phishing"}
+)
+
+# Types representing an active compromise -> carry an inherent severity floor.
+SECURITY_FLOOR_TYPES: frozenset[str] = frozenset(
+    {"security", "data-incident", "intrusion", "malware"}
+)
+
+
+def clamp_cvss(v: Optional[float]) -> Optional[float]:
+    """Clamp a CVSS base score into the valid 0.0-10.0 range (None passes through)."""
+    if v is None:
+        return None
+    return max(0.0, min(10.0, float(v)))
+
+
+# --------------------------------------------------------------------------- #
 # Input — Gemini extraction result
 # --------------------------------------------------------------------------- #
 class Entities(BaseModel):
@@ -75,12 +110,23 @@ class GeminiResult(BaseModel):
     filename: Optional[str] = None
     correlation_id: Optional[str] = None
 
+    # Cyber/SecOps hybrid: CVSS base score (0-10) and any CVE identifiers the
+    # model lifted from a vulnerability scan / SIEM export. Optional so pure SRE
+    # postmortems are unaffected.
+    cvss_score: Optional[float] = None
+    cve_ids: list[str] = Field(default_factory=list)
+
     metrics: IncidentMetrics = Field(default_factory=IncidentMetrics)
 
     @field_validator("confidence_score")
     @classmethod
     def _clamp_conf(cls, v: float) -> float:
         return max(0.0, min(1.0, float(v)))
+
+    @field_validator("cvss_score")
+    @classmethod
+    def _clamp_cvss(cls, v: Optional[float]) -> Optional[float]:
+        return clamp_cvss(v)
 
     @property
     def metrics_obj(self) -> IncidentMetrics:
@@ -133,7 +179,14 @@ class EnrichedResult(BaseModel):
     recurrence_fingerprint: str
     recurrence_seen_count: int
 
+    # Cyber/SecOps hybrid echoes (None for pure SRE postmortems).
+    cvss_score: Optional[float] = None
+    cve_ids: list[str] = Field(default_factory=list)
+
     routing_tags: list[str]
+    # Single-value routing decision per the assignment rubric:
+    # escalate | needs-review | auto-approved (derived from routing_tags).
+    routing_tag: str
 
     action_item_total: int
     action_items_without_owner: int
@@ -166,6 +219,13 @@ class SensitivityRequest(BaseModel):
     affected_jurisdictions: list[str] = Field(default_factory=list)
     entities: Entities = Field(default_factory=Entities)
     summary: str = ""
+    cvss_score: Optional[float] = None
+    cve_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("cvss_score")
+    @classmethod
+    def _clamp_cvss(cls, v: Optional[float]) -> Optional[float]:
+        return clamp_cvss(v)
 
 
 class SensitivityResponse(BaseModel):
@@ -180,6 +240,12 @@ class SeverityRequest(BaseModel):
     affected_jurisdictions: list[str] = Field(default_factory=list)
     metrics: IncidentMetrics = Field(default_factory=IncidentMetrics)
     summary: str = ""
+    cvss_score: Optional[float] = None
+
+    @field_validator("cvss_score")
+    @classmethod
+    def _clamp_cvss(cls, v: Optional[float]) -> Optional[float]:
+        return clamp_cvss(v)
 
 
 class SeverityResponse(BaseModel):
