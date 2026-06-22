@@ -140,7 +140,7 @@ browser — it ships with a bundled sample registry and needs no backend.
 cd services/enrichment-api
 pip install -r requirements.txt
 uvicorn app.main:app --reload      # http://localhost:8000/docs
-pytest -q                          # 20 tests
+pytest -q                          # 32 tests
 ```
 
 ---
