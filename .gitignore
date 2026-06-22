@@ -4,6 +4,8 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+# any local virtualenv
+*venv*/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/

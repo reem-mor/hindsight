@@ -8,6 +8,9 @@
 
 `n8n` · `Gemini 3 Flash (+ Vision)` · `FastAPI` · `Google Sheets` · `Gmail`
 
+[![tests](https://github.com/reem-mor/hindsight/actions/workflows/test.yml/badge.svg)](https://github.com/reem-mor/hindsight/actions/workflows/test.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 </div>
 
 ---

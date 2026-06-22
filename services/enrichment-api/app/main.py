@@ -22,7 +22,6 @@ from .models import (
     EnrichedResult,
     GeminiResult,
     HealthResponse,
-    IncidentMetrics,
     SensitivityRequest,
     SensitivityResponse,
     Severity,
