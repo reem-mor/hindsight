@@ -87,6 +87,12 @@ from `samples/` to watch a run end-to-end. First run with a SEV1 sample (e.g.
 
 ---
 
+> **Self-hosted build note.** The official n8n image is now a Docker Hardened Image
+> (Alpine without `apk`), so the extractor's Python deps are installed in a matching
+> `alpine:3.22` builder stage and copied in (see [`n8n/Dockerfile`](Dockerfile)).
+> `docker compose up --build` handles this for you. On n8n Cloud, the Python extractor
+> isn't used at all — swap that node for the native *Extract from File* node.
+
 ### What's already wired for you
 - **Retry / rate-limits** — both Gemini nodes: `retryOnFail`, 5 tries, 3 s backoff (survives 429s).
 - **Multimodal** — embedded dashboard images are auto-detected and read by Gemini Vision;
