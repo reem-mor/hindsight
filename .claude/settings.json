@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pytest*)",
+      "Bash(python -m pytest*)",
+      "Bash(python3 -m pytest*)",
+      "Bash(python -m uvicorn*)",
+      "Bash(uvicorn*)",
+      "Bash(node n8n*)",
+      "Bash(npm ci*)",
+      "Bash(npm run*)",
+      "Bash(npm test*)",
+      "Bash(pip install -r*)",
+      "Bash(python -m pip install -r*)",
+      "Bash(docker compose*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(ls*)",
+      "Bash(find*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(*.key)",
+      "Read(**/*.key)",
+      "Read(**/*.pem)"
+    ],
+    "ask": [
+      "Bash(git commit*)",
+      "Bash(git push*)"
+    ]
+  }
+}
