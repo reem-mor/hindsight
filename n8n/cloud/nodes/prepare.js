@@ -40,13 +40,12 @@ function readU32(buf, off) {
 }
 function unzipTextEntries(buf) {
   const entries = [];
-  let eocd = -1;
+  let eocd = buf.length;
   for (let i = buf.length - 22; i >= 0; i--) {
     if (readU32(buf, i) === 0x06054b50) { eocd = i; break; }
   }
-  if (eocd < 0) throw new Error("Invalid ZIP: EOCD not found");
-  let offset = readU32(buf, eocd + 16);
-  while (offset < eocd) {
+  let offset = 0;
+  while (offset + 30 < eocd) {
     if (readU32(buf, offset) !== 0x04034b50) break;
     const comp = readU16(buf, offset + 8);
     const compSize = readU32(buf, offset + 18);
@@ -63,7 +62,6 @@ function unzipTextEntries(buf) {
     if (comp === 0) {
       raw = data;
     } else if (comp === 8) {
-      // n8n Cloud sandbox blocks require("zlib"); use stored ZIP for batch uploads.
       throw new Error("DEFLATE zip entries blocked on n8n Cloud — re-pack with ZIP_STORED (see samples/make_batch_zip.py)");
     } else {
       continue;

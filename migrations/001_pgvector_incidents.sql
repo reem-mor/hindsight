@@ -20,6 +20,7 @@ create table if not exists hindsight_incidents (
 create index if not exists hindsight_incidents_embedding_idx
   on hindsight_incidents using ivfflat (embedding vector_cosine_ops)
   with (lists = 100);
+-- After bulk load: REINDEX INDEX hindsight_incidents_embedding_idx;
 
 -- RPC for similarity search (cosine distance; lower = more similar)
 create or replace function match_hindsight_incidents(
@@ -52,3 +53,8 @@ as $$
   order by embedding <=> query_embedding
   limit match_count;
 $$;
+
+-- PostgREST roles need explicit table grants (RLS still applies to anon/authenticated)
+grant select, insert, update, delete on public.hindsight_incidents to service_role;
+grant select on public.hindsight_incidents to authenticated, anon;
+grant execute on function public.match_hindsight_incidents(vector, int, float) to service_role, authenticated, anon;

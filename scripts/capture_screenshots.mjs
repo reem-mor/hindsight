@@ -18,8 +18,20 @@ const VENV_PY = join(ROOT, ".venv", "Scripts", "python.exe");
 function serveDashboard(port = 8765) {
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
-      const path = req.url === "/" ? "/index.html" : req.url;
-      const file = join(ROOT, "dashboard", path.replace(/^\//, ""));
+      const path = req.url?.split("?")[0] ?? "/";
+      if (path === "/fixtures/incidents.csv") {
+        const csv = join(ROOT, "dashboard", "fixtures", "incidents.csv");
+        if (!existsSync(csv)) {
+          res.writeHead(404);
+          res.end("fixtures missing");
+          return;
+        }
+        res.writeHead(200, { "Content-Type": "text/csv" });
+        res.end(readFileSync(csv));
+        return;
+      }
+      const filePath = path === "/" ? "/index.html" : path;
+      const file = join(ROOT, "dashboard", filePath.replace(/^\//, ""));
       if (!existsSync(file)) {
         res.writeHead(404);
         res.end("not found");
@@ -74,7 +86,12 @@ async function main() {
   let apiProc = null;
   try {
     apiProc = await startApi();
-    await shot(page, join(DOCS, "screenshot-dashboard.png"), dash.url, 2000);
+    await shot(
+      page,
+      join(DOCS, "screenshot-dashboard.png"),
+      `${dash.url}?csv=${encodeURIComponent(`${dash.url}fixtures/incidents.csv`)}`,
+      2500,
+    );
     await shot(page, join(DOCS, "screenshot-fastapi.png"), "http://127.0.0.1:8000/docs", 1500);
   } finally {
     dash.server.close();

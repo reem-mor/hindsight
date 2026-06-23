@@ -33,14 +33,13 @@ function readU32(buf, off) {
 
 function unzipEntries(buf) {
   const entries = [];
-  let eocd = -1;
+  let eocd = buf.length;
   for (let i = buf.length - 22; i >= 0; i--) {
     if (readU32(buf, i) === 0x06054b50) { eocd = i; break; }
   }
-  if (eocd < 0) throw new Error("Invalid ZIP: EOCD not found");
 
-  let offset = readU32(buf, eocd + 16);
-  while (offset < eocd) {
+  let offset = 0;
+  while (offset + 30 < eocd) {
     if (readU32(buf, offset) !== 0x04034b50) break;
     const comp = readU16(buf, offset + 8);
     const compSize = readU32(buf, offset + 18);

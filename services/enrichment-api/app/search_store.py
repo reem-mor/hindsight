@@ -87,7 +87,7 @@ class SupabaseVectorStore:
         self.url = url.rstrip("/")
         self.key = key
 
-    def _request(self, path: str, body: dict | None = None, method: str = "POST") -> Any:
+    def _request(self, path: str, body: dict | None = None, method: str = "POST", *, prefer: str = "return=minimal") -> Any:
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(
             f"{self.url}{path}",
@@ -97,7 +97,7 @@ class SupabaseVectorStore:
                 "apikey": self.key,
                 "Authorization": f"Bearer {self.key}",
                 "Content-Type": "application/json",
-                "Prefer": "return=minimal",
+                "Prefer": prefer,
             },
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -130,7 +130,12 @@ class SupabaseVectorStore:
             "embedding": emb,
             "metadata": metadata or {},
         }
-        self._request("/rest/v1/hindsight_incidents", row, method="POST")
+        self._request(
+            "/rest/v1/hindsight_incidents?on_conflict=document_id",
+            row,
+            method="POST",
+            prefer="return=minimal,resolution=merge-duplicates",
+        )
 
     def search(self, query: str, top_k: int = 5, min_similarity: float = 0.25) -> list[SearchHit]:
         q_emb = embed_text(query)

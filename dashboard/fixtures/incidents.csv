@@ -1,0 +1,4 @@
+document_id,filename,file_type,processed_at,classification,department,sentiment,confidence_score,summary,routing_tag,sensitivity,action_items,cvss_score,cve_ids
+hs-siem-523,siem_alert.md,md,2026-06-23T10:30:00Z,intrusion,SecOps,negative,0.92,Brute-force SSH intrusion against bastion hosts,escalate,confidential,"[{""action"":""Block source IPs"",""owner"":""SecOps"",""priority"":""P0""}]",,
+hs-phish-523,phishing_report.txt,txt,2026-06-23T10:30:00Z,phishing,SecOps,negative,0.88,KYC credential-harvest phishing campaign targeting customers,page-oncall,confidential,"[{""action"":""Revoke sessions"",""owner"":""IAM"",""priority"":""P0""}]",,
+hs-openssl-524,vuln_scan_critical_openssl.md,md,2026-06-23T10:31:00Z,vulnerability-scan,SecOps,negative,0.95,Critical OpenSSL RCE CVSS 9.8,escalate,confidential,"[{""action"":""Emergency patch"",""owner"":""Platform"",""priority"":""P0""}]",9.8,"[""CVE-2026-21841""]"
