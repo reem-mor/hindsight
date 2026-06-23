@@ -9,7 +9,7 @@
 | FastAPI `pytest` | `/enrich` brain: SecOps routing, CVSS floor, sensitivity, routing_tag | 48 | ✅ |
 | Cloud Code nodes `node` | Exact JS in `n8n/cloud/nodes/*.js` | 58 | ✅ |
 | `audit_n8n_cloud.py` | Live workflow nodes, credentials, sheet ID, executions | 1 report | ✅ |
-| Live E2E (form → Gemini → Sheet → Gmail) | Full external path | — | ✋ activate + submit sample |
+| Live E2E (form → Gemini → Sheet → Gmail) | Full external path | 1 | ✅ exec **507** |
 
 ## 2. Reproduce
 
@@ -47,7 +47,12 @@ Pinned dry-runs (pre-cyber trim): executions `481`, `483` — re-run live after 
 4. Record execution id below:
 
 ```
-Live execution ID: pending — last failure 503 (Incidents tab missing). Headers bootstrapped on Sheet1; rename tab then re-run.
+Live execution ID: 507 (success, 2026-06-23)
+Sample: samples/vuln_scan_critical_openssl.md
+Path: Page On-Call (SEV1) — CVSS 9.8, routing_tag escalate, Gmail §8.2 + HIGH PRIORITY banner
+Sheet: Append to Registry succeeded (Incidents tab)
 ```
 
-After success, update this line with the green execution id from n8n **Executions**.
+**Optional second run:** submit `samples/siem_bruteforce_intrusion.md` to exercise the digest branch (`Postmortem Filed` Gmail node when `Is SEV1?` is false).
+
+**Output files (`output_docs/`):** required in the assignment architecture for self-hosted Docker (`💾 Write output doc` in `n8n/hindsight_workflow.json`). Cloud workflow stores the registry in Sheets and emails the markdown summary; `Compose Outputs` also builds `postmortem_markdown` in the execution payload (view in n8n node output).

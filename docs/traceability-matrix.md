@@ -76,4 +76,4 @@ python scripts\audit_n8n_cloud.py
 python scripts\sync_n8n_cloud_nodes.py
 ```
 
-Live E2E: ✋ activate workflow → form upload `samples/vuln_scan_critical_openssl.md` → Sheet + Gmail.
+Live E2E: ✅ execution **507** — `vuln_scan_critical_openssl.md` → Sheet row + Page On-Call (SEV1) Gmail.
