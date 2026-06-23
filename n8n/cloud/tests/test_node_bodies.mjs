@@ -168,19 +168,27 @@ const VULN_CRITICAL = {
   ok('cvss.nan_nofloor', ['SEV3', 'SEV4'].includes(e.computed_severity), e.computed_severity);
 
   // ---- Parse-node guardrails ------------------------------------------------
-  let p = await parseNode({ candidates: [{ content: { parts: [{ text: '{"incident_title":"X","severity":"SEV3"}' }] } }] }, { correlationId: 'c1', sourceFilename: 'f.md' });
+  const VALID_PARSE = {
+    incident_title: 'X', severity: 'SEV3', incident_type: 'other',
+    summary: 'test summary', sentiment: 'neutral',
+    action_items: [{ action: 'review', owner: 'SecOps', priority: 'P2' }],
+    confidence_score: 0.85,
+  };
+  let p = await parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify(VALID_PARSE) }] } }] }, { correlationId: 'c1', sourceFilename: 'f.md' });
   eq('parse.clean.title', p.incident_title, 'X');
   eq('parse.clean.corr', p.correlation_id, 'c1');
   eq('parse.clean.file', p.source_filename, 'f.md');
 
-  p = await parseNode({ candidates: [{ content: { parts: [{ text: FENCE + 'json\n{"a":1}\n' + FENCE }] } }] }, {});
-  eq('parse.fenced_json', p.a, 1);
+  p = await parseNode({ candidates: [{ content: { parts: [{ text: FENCE + 'json\n' + JSON.stringify({ ...VALID_PARSE, incident_title: 'Fenced' }) + '\n' + FENCE }] } }] }, {});
+  eq('parse.fenced_json', p.incident_title, 'Fenced');
 
-  p = await parseNode({ candidates: [{ content: { parts: [{ text: FENCE + '\n{"b":2}\n' + FENCE }] } }] }, {});
-  eq('parse.fenced_plain', p.b, 2);
+  p = await parseNode({ candidates: [{ content: { parts: [{ text: FENCE + '\n' + JSON.stringify({ ...VALID_PARSE, classification: 'phishing' }) + '\n' + FENCE }] } }] }, {});
+  eq('parse.fenced_plain', p.classification, 'phishing');
 
   await throws('parse.malformed_throws', () => parseNode({ candidates: [{ content: { parts: [{ text: 'definitely not json {' }] } }] }, {}));
   await throws('parse.missing_candidates_throws', () => parseNode({}, {}));
+  await throws('parse.missing_fields_throws', () => parseNode({ candidates: [{ content: { parts: [{ text: '{"incident_title":"X","severity":"SEV3"}' }] } }] }, {}));
+  await throws('parse.bad_confidence_throws', () => parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify({ ...VALID_PARSE, confidence_score: 1.5 }) }] } }] }, {}));
 
   // ---- report ---------------------------------------------------------------
   const total = pass + failures.length;

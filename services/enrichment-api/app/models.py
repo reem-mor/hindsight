@@ -254,3 +254,63 @@ class SeverityResponse(BaseModel):
     severity_score: int
     rationale: list[str]
     review_needed: bool
+
+
+class SearchRequest(BaseModel):
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=5, ge=1, le=20)
+    min_similarity: float = Field(default=0.25, ge=0.0, le=1.0)
+
+
+class SearchHitResponse(BaseModel):
+    document_id: str
+    filename: str
+    classification: str
+    summary: str
+    routing_tag: str
+    sensitivity: str
+    similarity: float
+
+
+class SearchResponse(BaseModel):
+    query: str
+    hits: list[SearchHitResponse]
+
+
+class IndexRequest(BaseModel):
+    document_id: str
+    filename: str = ""
+    classification: str = "other"
+    department: str = "SecOps"
+    sensitivity: str = "internal"
+    routing_tag: str = "auto-approved"
+    summary: str = ""
+    processed_at: str = ""
+    text: str = Field(min_length=1)
+
+
+class CompareRequest(BaseModel):
+    flash: dict
+    pro: dict | None = None
+    prompt_text: str | None = None
+
+
+class CompareResponse(BaseModel):
+    classification_agreement: bool
+    confidence_delta: float
+    entity_overlap_ratio: float
+    field_diff_count: int
+    field_diffs: list[dict]
+    flash_summary: str
+    pro_summary: str
+
+
+class DigestPreviewRequest(BaseModel):
+    rows: list[dict] = Field(default_factory=list)
+    window_hours: int = Field(default=24, ge=1, le=168)
+
+
+class DigestPreviewResponse(BaseModel):
+    aggregate: dict
+    html: str
+    subject: str

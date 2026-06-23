@@ -17,6 +17,9 @@ services:
     environment:
       HINDSIGHT_LOG_LEVEL: "INFO"
       HINDSIGHT_JSON_LOGS: "true"
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s

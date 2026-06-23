@@ -34,14 +34,98 @@ const PROMPT_HEAD = [
 ""
 ].join("\\n");
 
+function readU16(buf, off) { return buf[off] | (buf[off + 1] << 8); }
+function readU32(buf, off) {
+  return (buf[off] | (buf[off + 1] << 8) | (buf[off + 2] << 16) | (buf[off + 3] << 24)) >>> 0;
+}
+function unzipTextEntries(buf) {
+  const entries = [];
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= 0; i--) {
+    if (readU32(buf, i) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("Invalid ZIP: EOCD not found");
+  let offset = readU32(buf, eocd + 16);
+  while (offset < eocd) {
+    if (readU32(buf, offset) !== 0x04034b50) break;
+    const comp = readU16(buf, offset + 8);
+    const compSize = readU32(buf, offset + 18);
+    const nameLen = readU16(buf, offset + 26);
+    const extraLen = readU16(buf, offset + 28);
+    const name = buf.slice(offset + 30, offset + 30 + nameLen).toString("utf8");
+    const dataStart = offset + 30 + nameLen + extraLen;
+    const data = buf.slice(dataStart, dataStart + compSize);
+    offset = dataStart + compSize;
+    if (name.endsWith("/")) continue;
+    const ext = name.indexOf(".") >= 0 ? name.split(".").pop().toLowerCase() : "";
+    if (ext !== "md" && ext !== "txt" && ext !== "markdown") continue;
+    let raw;
+    if (comp === 0) {
+      raw = data;
+    } else if (comp === 8) {
+      // n8n Cloud sandbox blocks require("zlib"); use stored ZIP for batch uploads.
+      throw new Error("DEFLATE zip entries blocked on n8n Cloud — re-pack with ZIP_STORED (see samples/make_batch_zip.py)");
+    } else {
+      continue;
+    }
+    entries.push({ filename: name.split("/").pop(), text: raw.toString("utf8") });
+    if (entries.length >= 25) break;
+  }
+  return entries;
+}
+
+function newCorrelationId() {
+  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return "hs-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
+}
+
+function buildGeminiBody(documentText, isPdf, b64) {
+  let parts;
+  if (isPdf) {
+    const promptText = PROMPT_HEAD
+      + "VISION NOTES: The source PDF is attached. Read any embedded SIEM or scan charts and fold metrics into summary.\n"
+      + "DOCUMENT: (see attached PDF)";
+    parts = [{ text: promptText }, { inline_data: { mime_type: "application/pdf", data: b64 } }];
+  } else {
+    const promptText = PROMPT_HEAD
+      + "VISION NOTES: (none)\n"
+      + "DOCUMENT TEXT:\n" + documentText;
+    parts = [{ text: promptText }];
+  }
+  return {
+    contents: [{ role: "user", parts: parts }],
+    generationConfig: { temperature: 0.2, responseMimeType: "application/json" }
+  };
+}
+
 const items = $input.all();
 const out = [];
 for (let idx = 0; idx < items.length; idx++) {
   const item = items[idx];
+  const pre = item.json || {};
+
+  // Batch fan-out item from Unzip Batch node (BON-7)
+  if (pre.isBatchItem && pre.documentText) {
+    out.push({ json: {
+      correlationId: newCorrelationId(),
+      sourceFilename: pre.sourceFilename || "batch-item.md",
+      mimeType: "text/plain",
+      isPdf: false,
+      isBatchItem: true,
+      batchIndex: pre.batchIndex,
+      batchTotal: pre.batchTotal,
+      receivedAt: new Date().toISOString(),
+      geminiBody: buildGeminiBody(pre.documentText, false, null),
+    } });
+    continue;
+  }
+
   const bin = item.binary || {};
   const keys = Object.keys(bin);
   if (keys.length === 0) {
-    throw new Error("No file was uploaded. Please attach a cyber incident log (.pdf, .md, or .txt).");
+    throw new Error("No file was uploaded. Please attach a cyber incident log (.pdf, .md, .txt, or .zip).");
   }
   const key = keys[0];
   const meta = bin[key] || {};
@@ -49,6 +133,7 @@ for (let idx = 0; idx < items.length; idx++) {
   const mimeType = String(meta.mimeType || "").toLowerCase();
   const ext = String(meta.fileExtension || (fileName.split(".").pop() || "")).toLowerCase();
   const isPdf = mimeType.indexOf("pdf") !== -1 || ext === "pdf";
+  const isZip = mimeType.indexOf("zip") !== -1 || ext === "zip";
 
   let buf;
   try {
@@ -57,40 +142,39 @@ for (let idx = 0; idx < items.length; idx++) {
     buf = Buffer.from(meta.data || "", "base64");
   }
 
-  let parts;
+  if (isZip) {
+    const entries = unzipTextEntries(buf);
+    if (!entries.length) throw new Error("ZIP contained no supported .md/.txt files");
+    for (let i = 0; i < entries.length; i++) {
+      out.push({ json: {
+        correlationId: newCorrelationId(),
+        sourceFilename: entries[i].filename,
+        mimeType: "text/plain",
+        isPdf: false,
+        isBatchItem: true,
+        batchIndex: i,
+        batchTotal: entries.length,
+        receivedAt: new Date().toISOString(),
+        geminiBody: buildGeminiBody(entries[i].text, false, null),
+      } });
+    }
+    continue;
+  }
+
+  let geminiBody;
   if (isPdf) {
-    const b64 = buf.toString("base64");
-    const promptText = PROMPT_HEAD
-      + "VISION NOTES: The source PDF is attached. Read any embedded SIEM or scan charts and fold metrics into summary.\n"
-      + "DOCUMENT: (see attached PDF)";
-    parts = [{ text: promptText }, { inline_data: { mime_type: "application/pdf", data: b64 } }];
+    geminiBody = buildGeminiBody("", true, buf.toString("base64"));
   } else {
-    const documentText = buf.toString("utf-8");
-    const promptText = PROMPT_HEAD
-      + "VISION NOTES: (none)\n"
-      + "DOCUMENT TEXT:\n" + documentText;
-    parts = [{ text: promptText }];
+    geminiBody = buildGeminiBody(buf.toString("utf-8"), false, null);
   }
-
-  let correlationId;
-  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
-    correlationId = globalThis.crypto.randomUUID();
-  } else {
-    correlationId = "hs-" + Date.now() + "-" + Math.floor(Math.random() * 1e6);
-  }
-
-  const geminiBody = {
-    contents: [{ role: "user", parts: parts }],
-    generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
-  };
 
   out.push({ json: {
-    correlationId: correlationId,
+    correlationId: newCorrelationId(),
     sourceFilename: fileName,
     mimeType: mimeType,
     isPdf: isPdf,
     receivedAt: new Date().toISOString(),
-    geminiBody: geminiBody
+    geminiBody: geminiBody,
   } });
 }
 return out;

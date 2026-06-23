@@ -112,7 +112,7 @@ vision = node(
             '    { "inline_data": { "mime_type": "image/png",'
             ' "data": "{{ $binary.data0 ? $binary.data0.toString(\'base64\') : \'\' }}" } }\n'
             '  ]}],\n'
-            '  "generationConfig": { "temperature": 0.1, "responseMimeType": "application/json" }\n'
+            '  "generationConfig": { "temperature": 0.2, "responseMimeType": "application/json" }\n'
             '}'
         ),
         "options": {},
@@ -179,7 +179,7 @@ gemini = node(
         "jsonBody": (
             '={\n'
             '  "contents": [{ "parts": [{ "text": {{ JSON.stringify($json.prompt) }} }] }],\n'
-            '  "generationConfig": { "temperature": 0.1, "responseMimeType": "application/json" }\n'
+            '  "generationConfig": { "temperature": 0.2, "responseMimeType": "application/json" }\n'
             '}'
         ),
         "options": {},
@@ -194,13 +194,29 @@ parse_gemini = node(
     "Parse Gemini JSON", "n8n-nodes-base.code", 2, X[8], Y0,
     {
         "jsCode": (
+            "const FENCE = String.fromCharCode(96, 96, 96);\n"
+            "const REQUIRED = ['summary', 'sentiment', 'action_items', 'confidence_score'];\n"
+            "function validateGeminiShape(g) {\n"
+            "  const missing = [];\n"
+            "  for (let i = 0; i < REQUIRED.length; i++) {\n"
+            "    if (g[REQUIRED[i]] === undefined) missing.push(REQUIRED[i]);\n"
+            "  }\n"
+            "  if (!g.incident_type && !g.classification) missing.push('incident_type|classification');\n"
+            "  if (!Array.isArray(g.action_items)) missing.push('action_items(array)');\n"
+            "  if (missing.length) throw new Error('Gemini JSON missing required fields: ' + missing.join(', '));\n"
+            "}\n"
             "const prev = $('Build extraction prompt').first().json;\n"
             "const resp = $input.first().json;\n"
             "let txt = resp.candidates?.[0]?.content?.parts?.[0]?.text;\n"
             "if (!txt) throw new Error('Gemini returned no text');\n"
-            "txt = txt.replace(/^```json/,'').replace(/```$/,'').trim();\n"
+            "txt = String(txt).trim();\n"
+            "if (txt.indexOf(FENCE) !== -1) {\n"
+            "  txt = txt.split(FENCE).join('');\n"
+            "  if (txt.toLowerCase().indexOf('json') === 0) txt = txt.slice(4);\n"
+            "  txt = txt.trim();\n"
+            "}\n"
             "let g; try { g = JSON.parse(txt); } catch(e){ throw new Error('Bad JSON from Gemini: '+txt.slice(0,200)); }\n"
-            "// shape payload for the enrichment API\n"
+            "validateGeminiShape(g);\n"
             "g.filename = prev.filename;\n"
             "g.correlation_id = prev.correlation_id;\n"
             "return [{ json: g }];"

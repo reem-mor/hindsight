@@ -1,0 +1,30 @@
+flowchart TB
+  subgraph input [Input detection]
+    CloudForm[n8n Cloud Form]
+    LocalWatch[incoming_docs watch]
+  end
+  subgraph extract [Extraction]
+    Prepare[Prepare Document / Python extractor]
+    Vision[Gemini Vision optional]
+  end
+  subgraph analyze [Gemini analysis]
+    Flash[Gemini 3 Flash JSON]
+    Parse[Parse Gemini JSON]
+  end
+  subgraph decide [Enrichment brain]
+    Enrich[HINDSIGHT Enrich CVSS floor]
+  end
+  subgraph outputs [Three output channels]
+    Sheets[Google Sheets registry]
+    Files[output_docs markdown]
+    Gmail[Gmail notification]
+  end
+  CloudForm --> Prepare
+  LocalWatch --> Prepare
+  Prepare --> Vision
+  Prepare --> Flash
+  Vision --> Flash
+  Flash --> Parse --> Enrich
+  Enrich --> Sheets
+  Enrich --> Files
+  Enrich --> Gmail

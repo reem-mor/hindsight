@@ -20,27 +20,39 @@ severity (including **CVSS floor**), classifies **sensitivity**, assigns **routi
 files one row per document to Google Sheets plus an HTML Gmail summary.
 
 ```mermaid
-flowchart LR
-  subgraph cloud [n8n Cloud — primary grading path]
-    Form[Submit incident log]
-    Gemini[Gemini Extract]
-    Enrich[HINDSIGHT Enrich]
-    Compose[Compose Outputs]
-    Sheets[Append to Registry]
-    Gmail[Gmail digest or SEV1 page]
-    Form --> Gemini --> Enrich --> Compose
-    Compose --> Sheets
-    Compose --> Gmail
+flowchart TB
+  subgraph input [Input detection]
+    Form[Cloud form upload]
+    Watch[incoming_docs watch]
   end
-  subgraph local [Self-hosted — Vision + output_docs]
-    Watch[incoming_docs]
-    Extract[Python extractor]
-    Vision[Gemini Vision]
-    API[FastAPI enrich]
-    Watch --> Extract --> Vision
-    Extract --> API
+  subgraph extract [Extraction]
+    Prep[Prepare / Python extractor]
+    Vision[Gemini Vision optional]
   end
+  subgraph analyze [Gemini analysis]
+    Flash[Gemini 3 Flash JSON]
+    Parse[Parse + validate JSON]
+  end
+  subgraph decide [Enrichment brain]
+    Enrich[CVSS floor + routing_tag]
+  end
+  subgraph outputs [Three output channels]
+    Sheets[Google Sheets]
+    Files[output_docs]
+    Gmail[Gmail Page or Digest]
+  end
+  Form --> Prep
+  Watch --> Prep
+  Prep --> Vision
+  Prep --> Flash
+  Vision --> Flash
+  Flash --> Parse --> Enrich
+  Enrich --> Sheets
+  Enrich --> Files
+  Enrich --> Gmail
 ```
+
+See [Figure 1 — architecture.png](docs/architecture.png) and [docs/architecture.md](docs/architecture.md).
 
 **The LLM extracts; the service decides.** CVSS 9.8 on a Nessus report floors to SEV1 and
 `routing_tag=escalate` even when the author typed SEV3.
@@ -84,27 +96,34 @@ or use the compose stack. Vision branch reads embedded SIEM/scan charts; output 
 .\.venv\Scripts\python.exe -m pytest services\enrichment-api -q
 ```
 
-Endpoints: `POST /enrich`, `GET /health`, `GET /categories`, `POST /sensitivity`. SecOps catalog
+Endpoints: `POST /enrich`, `GET /health`, `GET /categories`, `POST /sensitivity`,
+`POST /search`, `POST /index`, `POST /compare`, `POST /digest/preview`. SecOps catalog
 in `services/enrichment-api/data/service_catalog.yaml`.
 
 ---
 
-## Bonus challenges (≥2 required — 4 delivered)
+## Bonus challenges (all 8 delivered)
 
 | Bonus | Where | Verified |
 |---|---|---|
-| **Gemini Vision** | Self-hosted Vision node + cloud PDF `inline_data`; `prompts/vision_prompt.md`; `samples/make_cyber_pdf_sample.py` | Config + extractor image path |
-| **Live dashboard** | [`dashboard/index.html`](dashboard/index.html) — severity, CVSS, sensitivity, routing_tag | Sample JSON + optional published Sheet CSV |
-| **Retry logic** | Gemini HTTP: 5 tries / 3s backoff; Enrich: 3 tries | `retryOnFail` on workflow nodes |
-| **Sensitivity alerting** | SEV1 → high-priority **Page On-Call** email; CVSS ≥ 9 → escalate + page | pytest `test_critical_cvss_*`; node tests |
+| **BON-1 Gemini Vision** | Self-hosted Vision + cloud PDF `inline_data`; `prompts/vision_prompt.md`; `samples/vuln_scan_sev1_critical_rce.pdf` | `tests/test_extractor.py` |
+| **BON-2 Daily Digest** | `n8n/cloud/digest_workflow.json` + `digest_aggregate.js` | `test_digest.py`, bonus node tests |
+| **BON-3 Live dashboard** | [`dashboard/index.html`](dashboard/index.html) — CVSS, sensitivity, routing_tag; `?csv=` URL | `docs/screenshot-dashboard.png` |
+| **BON-4 Retry logic** | Gemini HTTP 5× / 3s backoff | `audit_n8n_cloud.py` retry check |
+| **BON-5 Semantic search** | `POST /search`, pgvector migration, auto-index on `/enrich` | `test_search.py` |
+| **BON-6 Multi-model compare** | `POST /compare`, `compare_models.js`, Gemini 3 Pro | `test_compare.py` |
+| **BON-7 Multi-file batch** | `.zip` in form; `prepare.js` fan-out; `samples/batch_incidents.zip` | `test_batch.py` |
+| **BON-8 Sensitivity alerting** | SEV1 / confidential / escalate → Page On-Call | exec 507; `patch_cloud_workflow.py` |
 
 ---
 
 ## Tests
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest services\enrichment-api -q    # 48 tests
-node n8n\cloud\tests\test_node_bodies.mjs                           # 58 checks
+.\.venv\Scripts\python.exe -m pytest services\enrichment-api -q
+.\.venv\Scripts\python.exe -m pytest tests\test_extractor.py -q
+node n8n\cloud\tests\test_node_bodies.mjs
+node n8n\cloud\tests\test_bonus_nodes.mjs
 .\.venv\Scripts\python.exe scripts\audit_n8n_cloud.py
 ```
 

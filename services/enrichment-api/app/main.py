@@ -20,9 +20,17 @@ from .logging_setup import configure_logging, correlation_id
 from .models import (
     INCIDENT_TYPES,
     CategoriesResponse,
+    CompareRequest,
+    CompareResponse,
+    DigestPreviewRequest,
+    DigestPreviewResponse,
     EnrichedResult,
     GeminiResult,
     HealthResponse,
+    IndexRequest,
+    SearchHitResponse,
+    SearchRequest,
+    SearchResponse,
     SensitivityRequest,
     SensitivityResponse,
     Severity,
@@ -31,6 +39,9 @@ from .models import (
 )
 from .routing import ServiceCatalog
 from .severity import score_severity
+from .compare import call_gemini_pro_json, compare_extractions
+from .digest import aggregate_digest, build_digest_html, filter_last_24h
+from .search_store import get_vector_store
 
 settings = get_settings()
 configure_logging(settings.log_level, settings.json_logs)
@@ -146,6 +157,34 @@ def enrich_endpoint(payload: GeminiResult) -> EnrichedResult:
         _METRICS["hindsight_page_oncall_total"] += 1
     if "repeat-offender" in result.routing_tags:
         _METRICS["hindsight_repeat_offender_total"] += 1
+    # BON-5: index enriched document for semantic search (in-memory or Supabase)
+    try:
+        text = " ".join(
+            filter(
+                None,
+                [
+                    payload.summary,
+                    payload.incident_title,
+                    payload.root_cause,
+                    " ".join(payload.affected_services),
+                ],
+            )
+        )
+        if text.strip():
+            store = get_vector_store()
+            store.upsert(
+                document_id=result.document_id,
+                filename=str(getattr(payload, "source_filename", "") or ""),
+                classification=payload.incident_type,
+                department=result.department,
+                sensitivity=result.sensitivity.value,
+                routing_tag=result.routing_tag,
+                summary=result.summary[:500],
+                processed_at=result.processed_at,
+                text=text,
+            )
+    except Exception:  # noqa: BLE001
+        logger.warning("search index upsert skipped", exc_info=True)
     logger.info(
         "document enriched",
         extra={
@@ -197,6 +236,65 @@ def score_severity_endpoint(payload: SeverityRequest) -> SeverityResponse:
         rationale=verdict.rationale,
         review_needed=verdict.review_needed,
     )
+
+
+@app.post("/search", response_model=SearchResponse, tags=["bonus"])
+def search_endpoint(payload: SearchRequest) -> SearchResponse:
+    store = get_vector_store()
+    hits = store.search(payload.query, top_k=payload.top_k, min_similarity=payload.min_similarity)
+    return SearchResponse(
+        query=payload.query,
+        hits=[
+            SearchHitResponse(
+                document_id=h.document_id,
+                filename=h.filename,
+                classification=h.classification,
+                summary=h.summary,
+                routing_tag=h.routing_tag,
+                sensitivity=h.sensitivity,
+                similarity=h.similarity,
+            )
+            for h in hits
+        ],
+    )
+
+
+@app.post("/index", tags=["bonus"])
+def index_endpoint(payload: IndexRequest) -> dict:
+    store = get_vector_store()
+    store.upsert(
+        document_id=payload.document_id,
+        filename=payload.filename,
+        classification=payload.classification,
+        department=payload.department,
+        sensitivity=payload.sensitivity,
+        routing_tag=payload.routing_tag,
+        summary=payload.summary,
+        processed_at=payload.processed_at,
+        text=payload.text,
+    )
+    _METRICS["hindsight_documents_indexed_total"] += 1
+    return {"status": "indexed", "document_id": payload.document_id}
+
+
+@app.post("/compare", response_model=CompareResponse, tags=["bonus"])
+def compare_endpoint(payload: CompareRequest) -> CompareResponse:
+    pro = payload.pro
+    if pro is None and payload.prompt_text:
+        pro = call_gemini_pro_json(payload.prompt_text)
+    if pro is None:
+        pro = {}
+    report = compare_extractions(payload.flash, pro)
+    return CompareResponse(**report)
+
+
+@app.post("/digest/preview", response_model=DigestPreviewResponse, tags=["bonus"])
+def digest_preview_endpoint(payload: DigestPreviewRequest) -> DigestPreviewResponse:
+    recent = filter_last_24h(payload.rows)
+    agg = aggregate_digest(recent)
+    html = build_digest_html(agg, window_hours=payload.window_hours)
+    subject = f"HINDSIGHT daily digest — {agg.get('total', 0)} incidents (last {payload.window_hours}h)"
+    return DigestPreviewResponse(aggregate=agg, html=html, subject=subject)
 
 
 @app.get("/", include_in_schema=False)

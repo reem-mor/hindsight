@@ -32,7 +32,22 @@ jobs:
         with:
           node-version: "20"
       - name: Run node-body tests
-        run: node n8n/cloud/tests/test_node_bodies.mjs
+        run: |
+          node n8n/cloud/tests/test_node_bodies.mjs
+          node n8n/cloud/tests/test_bonus_nodes.mjs
+
+  extractor:
+    name: Document extractor (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install extractor deps
+        run: pip install pymupdf pdfplumber python-docx
+      - name: Run extractor tests
+        run: pytest tests/test_extractor.py -q
 
   lint:
     name: Ruff lint (enrichment-api)

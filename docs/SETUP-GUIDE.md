@@ -110,14 +110,18 @@ Import `n8n/hindsight_workflow.json`, configure credentials per `n8n/SETUP.md`, 
 
 ---
 
-## 6. Bonus features delivered
+## 6. Bonus features (all 8)
 
 | Bonus | Implementation |
 |---|---|
-| **Gemini Vision** | Self-hosted: `Has dashboard image?` → Vision HTTP node. Cloud: PDF `inline_data` in Prepare Document. Sample: `samples/make_cyber_pdf_sample.py` |
-| **Live dashboard** | `dashboard/index.html` — CVSS, sensitivity, routing_tag views; publish Sheet CSV or use bundled sample JSON |
-| **Retry logic** | Gemini nodes: `retryOnFail` 5× / 3s. Enrich HTTP: 3× / 1.5s |
-| **Sensitivity alerting** | SEV1 → **Page On-Call** (high priority HTML). CVSS ≥ 9 → `routing_tag=escalate` + SEV1 page |
+| **BON-1 Vision** | Self-hosted Vision branch; cloud PDF `inline_data`; `samples/vuln_scan_sev1_critical_rce.pdf` |
+| **BON-2 Daily Digest** | Import `n8n/cloud/digest_workflow.json` (run `build_digest_workflow.py` first); cron 08:00 UTC |
+| **BON-3 Dashboard** | `dashboard/index.html`; optional live CSV via `?csv=` query param |
+| **BON-4 Retry** | Gemini 5× / 3s — verified by `audit_n8n_cloud.py` |
+| **BON-5 Semantic Search** | Apply `migrations/001_pgvector_incidents.sql`; set `SUPABASE_*` in `.env`; `POST /search` |
+| **BON-6 Compare** | `POST /compare` (Flash vs Pro); `compare_models.js` for n8n branch |
+| **BON-7 Batch** | Form accepts `.zip`; `prepare.js` fans out; fixture `samples/batch_incidents.zip` |
+| **BON-8 Alerting** | `patch_cloud_workflow.py` — pages on SEV1, confidential, or escalate |
 
 ---
 
@@ -128,9 +132,13 @@ Import `n8n/hindsight_workflow.json`, configure credentials per `n8n/SETUP.md`, 
 | `merge_amdocs_env.py` | Pull keys into `.env` |
 | `setup_n8n_hindsight.py` | Patch spreadsheet ID on Cloud workflow |
 | `sync_n8n_cloud_nodes.py` | Push `n8n/cloud/nodes/*.js` + Flatten node to Cloud |
+| `patch_cloud_workflow.py` | BON-7 zip accept, BON-8 alert routing, BON-4 retry |
+| `activate_n8n_cloud.py` | Activate grading workflow |
+| `build_digest_workflow.py` | Inject digest JS into digest workflow JSON |
 | `bootstrap_incidents_tab.py` | Create `Incidents` tab + header row via n8n |
 | `audit_n8n_cloud.py` | Health report → `docs/n8n-cloud-audit.json` |
 | `capture_screenshots.mjs` | Dashboard + FastAPI screenshots |
+| `render_architecture.mjs` | Export `docs/architecture.png` |
 
 ---
 

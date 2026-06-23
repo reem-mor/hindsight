@@ -66,6 +66,6 @@ DOCUMENT TEXT:
 ```json
 {
   "contents": [{ "parts": [{ "text": "<prompt with substitutions>" }] }],
-  "generationConfig": { "temperature": 0.1, "responseMimeType": "application/json" }
+  "generationConfig": { "temperature": 0.2, "responseMimeType": "application/json" }
 }
 ```

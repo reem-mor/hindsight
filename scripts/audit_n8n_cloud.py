@@ -88,6 +88,15 @@ def main() -> int:
     else:
         add("review", "Gemini credential bound", "Open node → HTTP Header Auth x-goog-api-key")
 
+    if gemini.get("retryOnFail") and gemini.get("maxTries") == 5 and gemini.get("waitBetweenTries") == 3000:
+        add("ok", "Gemini retry policy (BON-4)", "retryOnFail 5× / 3000ms")
+    else:
+        add("review", "Gemini retry policy (BON-4)", json.dumps({
+            "retryOnFail": gemini.get("retryOnFail"),
+            "maxTries": gemini.get("maxTries"),
+            "waitBetweenTries": gemini.get("waitBetweenTries"),
+        }))
+
     gem_params = gemini.get("parameters", {})
     url = str(gem_params.get("url", ""))
     if "gemini-3-flash" in url:
