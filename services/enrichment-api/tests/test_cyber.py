@@ -78,7 +78,7 @@ def test_routing_tag_auto_approved_on_clean_minor(client):
         client,
         incident_type="degradation",
         severity="SEV4",
-        affected_services=["notifications"],
+        affected_services=["email-gateway"],
         affected_jurisdictions=[],
         summary="Minor internal email delay, no customer impact.",
         root_cause="queue backlog cleared itself",
@@ -104,10 +104,10 @@ def test_intrusion_routes_to_security_ir(client):
     assert b["department"] == "Security-IR"
 
 
-def test_ddos_routes_to_platform_sre(client):
+def test_ddos_routes_to_netsec(client):
     b = _enrich(client, incident_type="ddos",
                 affected_services=["nope-xyz"], summary="volumetric flood")
-    assert b["department"] == "Platform-SRE"
+    assert b["department"] == "NetSec"
 
 
 def test_siem_alias_resolves_to_secops_service(client):
@@ -118,7 +118,7 @@ def test_siem_alias_resolves_to_secops_service(client):
 
 
 def test_phishing_is_confidential(client):
-    b = _enrich(client, incident_type="phishing", affected_services=["kyc"],
+    b = _enrich(client, incident_type="phishing", affected_services=["email-gateway"],
                 summary="staff credential harvesting via look-alike domain")
     assert b["sensitivity"] == "confidential"
 

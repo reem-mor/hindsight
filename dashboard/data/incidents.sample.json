@@ -1,800 +1,380 @@
-[
+﻿[
   {
-    "document_id": "inc-20260314-000",
-    "processed_at": "2026-03-14T11:24:29.949732+00:00",
-    "incident_title": "Sportsbook trading halt (Mar 14)",
-    "incident_type": "dependency-failure",
-    "reported_severity": "SEV1",
-    "computed_severity": "SEV1",
-    "department": "Sportsbook-SRE",
-    "affected_services_resolved": [
-      "sportsbook"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE",
-      "MGM"
-    ],
+    "document_id": "inc-20260324-000",
+    "filename": "siem_20260324.md",
+    "file_type": "md",
+    "processed_at": "2026-03-24T20:48:44.024294+00:00",
+    "classification": "intrusion",
+    "department": "SecOps",
+    "sentiment": "negative",
+    "confidence_score": 0.88,
+    "summary": "Brute-force login attempts from distributed botnet IPs. Impact on siem.",
+    "routing_tag": "needs-review",
     "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
     "cvss_score": null,
-    "cve_ids": [],
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "SIEM alert \u2014 brute force intrusion (Mar 24)",
+    "recurrence_fingerprint": "03f89a5876fe",
     "ttr_minutes": 61,
-    "status": "resolved",
-    "recurrence_fingerprint": "85b5df0e4d45",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "page-oncall",
-      "regulatory-review"
-    ],
-    "routing_tag": "escalate",
-    "action_item_total": 3,
-    "action_items_without_owner": 0,
-    "summary": "Odds feed provider timeout cascaded to trading. Impact on sportsbook across UKGC, NJ-DGE, MGM."
+    "status": "monitoring"
   },
   {
-    "document_id": "inc-20260321-001",
-    "processed_at": "2026-03-21T20:24:29.949732+00:00",
-    "incident_title": "Edge traffic drop (Mar 21)",
-    "incident_type": "configuration",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "Platform-SRE",
-    "affected_services_resolved": [
-      "edge-cdn"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 41,
-    "status": "resolved",
-    "recurrence_fingerprint": "2f2fd17b80e6",
-    "routing_tags": [
-      "auto-filed",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 4,
-    "action_items_without_owner": 3,
-    "summary": "WAF rule update dropped legitimate traffic. Impact on edge-cdn across global."
-  },
-  {
-    "document_id": "inc-20260322-002",
-    "processed_at": "2026-03-22T10:24:29.949732+00:00",
-    "incident_title": "Sportsbook trading halt (Mar 22)",
-    "incident_type": "dependency-failure",
-    "reported_severity": "SEV1",
-    "computed_severity": "SEV1",
-    "department": "Sportsbook-SRE",
-    "affected_services_resolved": [
-      "sportsbook"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE",
-      "MGM"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 98,
-    "status": "resolved",
-    "recurrence_fingerprint": "85b5df0e4d45",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "page-oncall",
-      "regulatory-review",
-      "unowned-actions"
-    ],
-    "routing_tag": "escalate",
-    "action_item_total": 4,
-    "action_items_without_owner": 1,
-    "summary": "Odds feed provider timeout cascaded to trading. Impact on sportsbook across UKGC, NJ-DGE, MGM."
-  },
-  {
-    "document_id": "inc-20260330-003",
-    "processed_at": "2026-03-30T14:24:29.949732+00:00",
-    "incident_title": "Sportsbook trading halt (Mar 30)",
-    "incident_type": "dependency-failure",
-    "reported_severity": "SEV1",
-    "computed_severity": "SEV1",
-    "department": "Sportsbook-SRE",
-    "affected_services_resolved": [
-      "sportsbook"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE",
-      "MGM"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 51,
-    "status": "resolved",
-    "recurrence_fingerprint": "85b5df0e4d45",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "page-oncall",
-      "regulatory-review"
-    ],
-    "routing_tag": "escalate",
-    "action_item_total": 5,
-    "action_items_without_owner": 0,
-    "summary": "Odds feed provider timeout cascaded to trading. Impact on sportsbook across UKGC, NJ-DGE, MGM."
-  },
-  {
-    "document_id": "inc-20260402-004",
-    "processed_at": "2026-04-02T18:24:29.949732+00:00",
-    "incident_title": "Edge traffic drop (Apr 02)",
-    "incident_type": "data-incident",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "Platform-SRE",
-    "affected_services_resolved": [
-      "edge-cdn"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 91,
-    "status": "monitoring",
-    "recurrence_fingerprint": "f9c3b08faa2b",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 5,
-    "action_items_without_owner": 1,
-    "summary": "WAF rule update dropped legitimate traffic. Impact on edge-cdn across global."
-  },
-  {
-    "document_id": "inc-20260405-005",
-    "processed_at": "2026-04-05T10:24:29.949732+00:00",
-    "incident_title": "Payments gateway outage (Apr 05)",
-    "incident_type": "configuration",
-    "reported_severity": "SEV1",
-    "computed_severity": "SEV1",
-    "department": "Payments-SRE",
-    "affected_services_resolved": [
-      "payments-gateway"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE",
-      "MGM"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 81,
-    "status": "resolved",
-    "recurrence_fingerprint": "11de23d3fb9b",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "page-oncall",
-      "regulatory-review"
-    ],
-    "routing_tag": "escalate",
-    "action_item_total": 1,
-    "action_items_without_owner": 0,
-    "summary": "Connection pool exhaustion in the PSP adapter. Impact on payments-gateway across UKGC, NJ-DGE, MGM."
-  },
-  {
-    "document_id": "inc-20260409-006",
-    "processed_at": "2026-04-09T09:24:29.949732+00:00",
-    "incident_title": "Edge traffic drop (Apr 09)",
-    "incident_type": "outage",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "Platform-SRE",
-    "affected_services_resolved": [
-      "edge-cdn"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 57,
-    "status": "resolved",
-    "recurrence_fingerprint": "b872e62b8c96",
-    "routing_tags": [
-      "auto-filed"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 2,
-    "action_items_without_owner": 0,
-    "summary": "WAF rule update dropped legitimate traffic. Impact on edge-cdn across global."
-  },
-  {
-    "document_id": "inc-20260413-007",
-    "processed_at": "2026-04-13T04:24:29.949732+00:00",
-    "incident_title": "CI pipeline stall (Apr 13)",
-    "incident_type": "outage",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "DevEx",
-    "affected_services_resolved": [
-      "internal-tooling"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 38,
-    "status": "resolved",
-    "recurrence_fingerprint": "a79f2be422db",
-    "routing_tags": [
-      "auto-filed"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 1,
-    "action_items_without_owner": 0,
-    "summary": "CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."
-  },
-  {
-    "document_id": "inc-20260419-008",
-    "processed_at": "2026-04-19T03:24:29.949732+00:00",
-    "incident_title": "Edge traffic drop (Apr 19)",
-    "incident_type": "deployment-failure",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "Platform-SRE",
-    "affected_services_resolved": [
-      "edge-cdn"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 35,
-    "status": "resolved",
-    "recurrence_fingerprint": "27936d13666b",
-    "routing_tags": [
-      "auto-filed",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 3,
-    "action_items_without_owner": 1,
-    "summary": "WAF rule update dropped legitimate traffic. Impact on edge-cdn across global."
-  },
-  {
-    "document_id": "inc-20260426-009",
-    "processed_at": "2026-04-26T17:24:29.949732+00:00",
-    "incident_title": "CI pipeline stall (Apr 26)",
-    "incident_type": "capacity",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "DevEx",
-    "affected_services_resolved": [
-      "internal-tooling"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 42,
-    "status": "resolved",
-    "recurrence_fingerprint": "fb4339bf9f98",
-    "routing_tags": [
-      "auto-filed"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 1,
-    "action_items_without_owner": 0,
-    "summary": "CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."
-  },
-  {
-    "document_id": "inc-20260430-010",
-    "processed_at": "2026-04-30T21:24:29.949732+00:00",
-    "incident_title": "Login failures (Apr 30)",
-    "incident_type": "outage",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "Identity-SRE",
-    "affected_services_resolved": [
-      "identity"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 84,
-    "status": "resolved",
-    "recurrence_fingerprint": "30e80cf82ad8",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 2,
-    "action_items_without_owner": 1,
-    "summary": "Session store failover did not promote a replica. Impact on identity across global."
-  },
-  {
-    "document_id": "inc-20260504-011",
-    "processed_at": "2026-05-04T22:24:29.949732+00:00",
-    "incident_title": "CI pipeline stall (May 04)",
-    "incident_type": "outage",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "DevEx",
-    "affected_services_resolved": [
-      "internal-tooling"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 70,
-    "status": "resolved",
-    "recurrence_fingerprint": "a79f2be422db",
-    "routing_tags": [
-      "auto-filed",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 5,
-    "action_items_without_owner": 4,
-    "summary": "CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."
-  },
-  {
-    "document_id": "inc-20260507-012",
-    "processed_at": "2026-05-07T21:24:29.949732+00:00",
-    "incident_title": "CI pipeline stall (May 07)",
-    "incident_type": "security",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "DevEx",
-    "affected_services_resolved": [
-      "internal-tooling"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 22,
-    "status": "resolved",
-    "recurrence_fingerprint": "94900095c709",
-    "routing_tags": [
-      "auto-filed",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 2,
-    "action_items_without_owner": 1,
-    "summary": "CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."
-  },
-  {
-    "document_id": "inc-20260512-013",
-    "processed_at": "2026-05-12T14:24:29.949732+00:00",
-    "incident_title": "Wallet balance errors (May 12)",
-    "incident_type": "capacity",
-    "reported_severity": "SEV1",
-    "computed_severity": "SEV1",
-    "department": "Payments-SRE",
-    "affected_services_resolved": [
-      "wallet"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE",
-      "MGM"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 84,
-    "status": "resolved",
-    "recurrence_fingerprint": "7cf953e596cf",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "page-oncall",
-      "regulatory-review",
-      "unowned-actions"
-    ],
-    "routing_tag": "escalate",
-    "action_item_total": 3,
-    "action_items_without_owner": 1,
-    "summary": "Ledger write lock contention under peak load. Impact on wallet across UKGC, NJ-DGE, MGM."
-  },
-  {
-    "document_id": "inc-20260518-014",
-    "processed_at": "2026-05-18T07:24:29.949732+00:00",
-    "incident_title": "Casino platform degradation (May 18)",
-    "incident_type": "capacity",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "Platform-SRE",
-    "affected_services_resolved": [
-      "casino-platform"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 28,
-    "status": "resolved",
-    "recurrence_fingerprint": "f766b84c27f3",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "regulatory-review",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 4,
-    "action_items_without_owner": 3,
-    "summary": "Game RNG service OOM after memory leak. Impact on casino-platform across UKGC, NJ-DGE."
-  },
-  {
-    "document_id": "inc-20260522-015",
-    "processed_at": "2026-05-22T03:24:29.949732+00:00",
-    "incident_title": "Regulatory reporting delay (May 22)",
-    "incident_type": "dependency-failure",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "Data-Platform",
-    "affected_services_resolved": [
-      "reporting-db"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 25,
-    "status": "resolved",
-    "recurrence_fingerprint": "e7f4f8d5523f",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "regulatory-review",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 5,
-    "action_items_without_owner": 2,
-    "summary": "Nightly ETL deadlock delayed regulatory reporting. Impact on reporting-db across UKGC, NJ-DGE."
-  },
-  {
-    "document_id": "inc-20260525-016",
-    "processed_at": "2026-05-25T19:24:29.949732+00:00",
-    "incident_title": "Notification delivery delay (May 25)",
-    "incident_type": "data-incident",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "Engagement-Eng",
-    "affected_services_resolved": [
-      "notifications"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 62,
-    "status": "resolved",
-    "recurrence_fingerprint": "484a9c16faf1",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 4,
-    "action_items_without_owner": 3,
-    "summary": "SMS provider rate-limited outbound messages. Impact on notifications across global."
-  },
-  {
-    "document_id": "inc-20260531-017",
-    "processed_at": "2026-05-31T04:24:29.949732+00:00",
-    "incident_title": "Regulatory reporting delay (May 31)",
-    "incident_type": "degradation",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "Data-Platform",
-    "affected_services_resolved": [
-      "reporting-db"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 49,
-    "status": "monitoring",
-    "recurrence_fingerprint": "366c45d62a7a",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "regulatory-review"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 2,
-    "action_items_without_owner": 0,
-    "summary": "Nightly ETL deadlock delayed regulatory reporting. Impact on reporting-db across UKGC, NJ-DGE."
-  },
-  {
-    "document_id": "inc-20260605-018",
-    "processed_at": "2026-06-05T14:24:29.949732+00:00",
-    "incident_title": "CI pipeline stall (Jun 05)",
-    "incident_type": "outage",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "DevEx",
-    "affected_services_resolved": [
-      "internal-tooling"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 78,
-    "status": "monitoring",
-    "recurrence_fingerprint": "a79f2be422db",
-    "routing_tags": [
-      "auto-filed",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 5,
-    "action_items_without_owner": 4,
-    "summary": "CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."
-  },
-  {
-    "document_id": "inc-20260611-019",
-    "processed_at": "2026-06-11T10:24:29.949732+00:00",
-    "incident_title": "CI pipeline stall (Jun 11)",
-    "incident_type": "deployment-failure",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "DevEx",
-    "affected_services_resolved": [
-      "internal-tooling"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 59,
-    "status": "resolved",
-    "recurrence_fingerprint": "d4bcfab811d6",
-    "routing_tags": [
-      "auto-filed",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 2,
-    "action_items_without_owner": 1,
-    "summary": "CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."
-  },
-  {
-    "document_id": "vuln-20260613-100",
-    "processed_at": "2026-06-13T13:24:29.949732+00:00",
-    "incident_title": "Critical RCE in payments TLS library (CVE-2026-21841)",
-    "incident_type": "vulnerability-scan",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV1",
+    "document_id": "inc-20260331-001",
+    "filename": "vulnerability_scanner_20260331.md",
+    "file_type": "md",
+    "processed_at": "2026-03-31T05:48:44.024294+00:00",
+    "classification": "vulnerability-scan",
     "department": "SecOps",
-    "affected_services_resolved": [
-      "payments-gateway",
-      "wallet"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE",
-      "MGM"
-    ],
+    "sentiment": "neutral",
+    "confidence_score": 0.87,
+    "summary": "Critical OpenSSL RCE flagged on perimeter hosts. Impact on vulnerability-scanner.",
+    "routing_tag": "escalate",
     "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
     "cvss_score": 9.8,
-    "cve_ids": [
-      "CVE-2026-21841"
-    ],
-    "ttr_minutes": 0,
-    "status": "monitoring",
-    "recurrence_fingerprint": "cve2026218410",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "page-oncall",
-      "regulatory-review",
-      "severity-review"
-    ],
+    "cve_ids": "CVE-2026-64993",
+    "computed_severity": "SEV1",
+    "incident_title": "Critical vulnerability scan finding (Mar 31)",
+    "recurrence_fingerprint": "2023823dd736",
+    "ttr_minutes": 41,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260402-002",
+    "filename": "siem_20260402.md",
+    "file_type": "md",
+    "processed_at": "2026-04-02T17:48:44.024294+00:00",
+    "classification": "intrusion",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.75,
+    "summary": "Brute-force login attempts from distributed botnet IPs. Impact on siem.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "SIEM alert \u2014 brute force intrusion (Apr 02)",
+    "recurrence_fingerprint": "03f89a5876fe",
+    "ttr_minutes": 24,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260408-003",
+    "filename": "endpoint_security_20260408.md",
+    "file_type": "md",
+    "processed_at": "2026-04-08T08:48:44.024294+00:00",
+    "classification": "data-incident",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.74,
+    "summary": "Malware beacon detected on finance workstation. Impact on endpoint-security.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "EDR malware detection (Apr 08)",
+    "recurrence_fingerprint": "24f6d4ec1078",
+    "ttr_minutes": 93,
+    "status": "resolved"
+  },
+  {
+    "document_id": "inc-20260413-004",
+    "filename": "siem_20260413.md",
+    "file_type": "md",
+    "processed_at": "2026-04-13T10:48:44.024294+00:00",
+    "classification": "ddos",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.81,
+    "summary": "Brute-force login attempts from distributed botnet IPs. Impact on siem.",
+    "routing_tag": "auto-approved",
+    "sensitivity": "internal",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV3",
+    "incident_title": "SIEM alert \u2014 brute force intrusion (Apr 13)",
+    "recurrence_fingerprint": "0408578b5659",
+    "ttr_minutes": 72,
+    "status": "resolved"
+  },
+  {
+    "document_id": "inc-20260417-005",
+    "filename": "vulnerability_scanner_20260417.md",
+    "file_type": "md",
+    "processed_at": "2026-04-17T06:48:44.024294+00:00",
+    "classification": "other",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.75,
+    "summary": "Critical OpenSSL RCE flagged on perimeter hosts. Impact on vulnerability-scanner.",
+    "routing_tag": "auto-approved",
+    "sensitivity": "internal",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV3",
+    "incident_title": "Critical vulnerability scan finding (Apr 17)",
+    "recurrence_fingerprint": "add0123975d0",
+    "ttr_minutes": 52,
+    "status": "resolved"
+  },
+  {
+    "document_id": "inc-20260422-006",
+    "filename": "internal_tooling_20260422.md",
+    "file_type": "md",
+    "processed_at": "2026-04-22T13:48:44.024294+00:00",
+    "classification": "security",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.89,
+    "summary": "Unpatched dependency in CI runner image. Impact on internal-tooling.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "Internal tooling vulnerability (Apr 22)",
+    "recurrence_fingerprint": "bd4bf522ab5e",
+    "ttr_minutes": 38,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260429-007",
+    "filename": "endpoint_security_20260429.md",
+    "file_type": "md",
+    "processed_at": "2026-04-29T01:48:44.024294+00:00",
+    "classification": "phishing",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.74,
+    "summary": "Malware beacon detected on finance workstation. Impact on endpoint-security.",
+    "routing_tag": "auto-approved",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV3",
+    "incident_title": "EDR malware detection (Apr 29)",
+    "recurrence_fingerprint": "d8234ec35bfd",
+    "ttr_minutes": 45,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260503-008",
+    "filename": "vulnerability_scanner_20260503.md",
+    "file_type": "md",
+    "processed_at": "2026-05-03T21:48:44.024294+00:00",
+    "classification": "security",
+    "department": "SecOps",
+    "sentiment": "negative",
+    "confidence_score": 0.78,
+    "summary": "Critical OpenSSL RCE flagged on perimeter hosts. Impact on vulnerability-scanner.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "Critical vulnerability scan finding (May 03)",
+    "recurrence_fingerprint": "3e13217bbcbe",
+    "ttr_minutes": 43,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260510-009",
+    "filename": "endpoint_security_20260510.md",
+    "file_type": "md",
+    "processed_at": "2026-05-10T23:48:44.024294+00:00",
+    "classification": "data-incident",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.83,
+    "summary": "Malware beacon detected on finance workstation. Impact on endpoint-security.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "EDR malware detection (May 10)",
+    "recurrence_fingerprint": "24f6d4ec1078",
+    "ttr_minutes": 55,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260513-010",
+    "filename": "endpoint_security_20260513.md",
+    "file_type": "md",
+    "processed_at": "2026-05-13T00:48:44.024294+00:00",
+    "classification": "phishing",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.91,
+    "summary": "Malware beacon detected on finance workstation. Impact on endpoint-security.",
+    "routing_tag": "auto-approved",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV3",
+    "incident_title": "EDR malware detection (May 13)",
+    "recurrence_fingerprint": "d8234ec35bfd",
+    "ttr_minutes": 19,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260519-011",
+    "filename": "email_gateway_20260519.md",
+    "file_type": "md",
+    "processed_at": "2026-05-19T19:48:44.024294+00:00",
+    "classification": "security",
+    "department": "SecOps",
+    "sentiment": "negative",
+    "confidence_score": 0.9,
+    "summary": "Phishing campaign impersonating IT helpdesk. Impact on email-gateway.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "Phishing email campaign (May 19)",
+    "recurrence_fingerprint": "398791f3914c",
+    "ttr_minutes": 19,
+    "status": "resolved"
+  },
+  {
+    "document_id": "inc-20260523-012",
+    "filename": "vulnerability_scanner_20260523.md",
+    "file_type": "md",
+    "processed_at": "2026-05-23T17:48:44.024294+00:00",
+    "classification": "data-incident",
+    "department": "SecOps",
+    "sentiment": "negative",
+    "confidence_score": 0.94,
+    "summary": "Critical OpenSSL RCE flagged on perimeter hosts. Impact on vulnerability-scanner.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "Critical vulnerability scan finding (May 23)",
+    "recurrence_fingerprint": "64d3a323fa5f",
+    "ttr_minutes": 57,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260530-013",
+    "filename": "siem_20260530.md",
+    "file_type": "md",
+    "processed_at": "2026-05-30T20:48:44.024294+00:00",
+    "classification": "other",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.85,
+    "summary": "Brute-force login attempts from distributed botnet IPs. Impact on siem.",
+    "routing_tag": "needs-review",
+    "sensitivity": "internal",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV3",
+    "incident_title": "SIEM alert \u2014 brute force intrusion (May 30)",
+    "recurrence_fingerprint": "31073a467c73",
+    "ttr_minutes": 62,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260603-014",
+    "filename": "internal_tooling_20260603.md",
+    "file_type": "md",
+    "processed_at": "2026-06-03T03:48:44.024294+00:00",
+    "classification": "malware",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.94,
+    "summary": "Unpatched dependency in CI runner image. Impact on internal-tooling.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV3",
+    "incident_title": "Internal tooling vulnerability (Jun 03)",
+    "recurrence_fingerprint": "488fe34bee1f",
+    "ttr_minutes": 26,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260609-015",
+    "filename": "auth_20260609.md",
+    "file_type": "md",
+    "processed_at": "2026-06-09T06:48:44.024294+00:00",
+    "classification": "ddos",
+    "department": "Identity-Sec",
+    "sentiment": "neutral",
+    "confidence_score": 0.93,
+    "summary": "Credential stuffing against SSO login endpoints. Impact on auth.",
+    "routing_tag": "needs-review",
+    "sensitivity": "internal",
+    "action_items": "P1: investigate (Identity-Sec); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV3",
+    "incident_title": "Authentication anomaly (Jun 09)",
+    "recurrence_fingerprint": "aa58973cfa45",
+    "ttr_minutes": 8,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260614-016",
+    "filename": "vulnerability_scanner_20260614.md",
+    "file_type": "md",
+    "processed_at": "2026-06-14T19:48:44.024294+00:00",
+    "classification": "malware",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.86,
+    "summary": "Critical OpenSSL RCE flagged on perimeter hosts. Impact on vulnerability-scanner.",
+    "routing_tag": "needs-review",
+    "sensitivity": "confidential",
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": null,
+    "cve_ids": "",
+    "computed_severity": "SEV2",
+    "incident_title": "Critical vulnerability scan finding (Jun 14)",
+    "recurrence_fingerprint": "42a73b1b3560",
+    "ttr_minutes": 33,
+    "status": "monitoring"
+  },
+  {
+    "document_id": "inc-20260620-017",
+    "filename": "endpoint_security_20260620.md",
+    "file_type": "md",
+    "processed_at": "2026-06-20T05:48:44.024294+00:00",
+    "classification": "vulnerability-scan",
+    "department": "SecOps",
+    "sentiment": "neutral",
+    "confidence_score": 0.72,
+    "summary": "Malware beacon detected on finance workstation. Impact on endpoint-security.",
     "routing_tag": "escalate",
-    "action_item_total": 3,
-    "action_items_without_owner": 0,
-    "summary": "Authenticated Nessus scan flagged a remote code execution vuln in the TLS library on 23 payment hosts."
-  },
-  {
-    "document_id": "inc-20260615-020",
-    "processed_at": "2026-06-15T14:24:29.949732+00:00",
-    "incident_title": "KYC onboarding delays (Jun 15)",
-    "incident_type": "configuration",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "Compliance-Eng",
-    "affected_services_resolved": [
-      "kyc"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE"
-    ],
     "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
+    "action_items": "P1: investigate (SecOps); P2: document",
+    "cvss_score": 9.8,
+    "cve_ids": "CVE-2026-68400",
+    "computed_severity": "SEV1",
+    "incident_title": "EDR malware detection (Jun 20)",
+    "recurrence_fingerprint": "df5e5e181015",
     "ttr_minutes": 48,
-    "status": "resolved",
-    "recurrence_fingerprint": "55b4c78bf782",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "regulatory-review"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 5,
-    "action_items_without_owner": 0,
-    "summary": "Third-party verification vendor returned 5xx. Impact on kyc across UKGC, NJ-DGE."
-  },
-  {
-    "document_id": "vuln-20260616-101",
-    "processed_at": "2026-06-16T13:24:29.949732+00:00",
-    "incident_title": "Credential brute force against identity (limited ATO)",
-    "incident_type": "intrusion",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "Security-IR",
-    "affected_services_resolved": [
-      "identity"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 44,
-    "status": "resolved",
-    "recurrence_fingerprint": "intrusionatob1",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "needs-review"
-    ],
-    "routing_tag": "needs-review",
-    "action_item_total": 3,
-    "action_items_without_owner": 1,
-    "summary": "Splunk ES fired on distributed credential stuffing; 3 accounts accessed, sessions revoked."
-  },
-  {
-    "document_id": "inc-20260618-021",
-    "processed_at": "2026-06-18T14:24:29.949732+00:00",
-    "incident_title": "CI pipeline stall (Jun 18)",
-    "incident_type": "deployment-failure",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "DevEx",
-    "affected_services_resolved": [
-      "internal-tooling"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 48,
-    "status": "resolved",
-    "recurrence_fingerprint": "d4bcfab811d6",
-    "routing_tags": [
-      "auto-filed",
-      "unowned-actions"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 4,
-    "action_items_without_owner": 3,
-    "summary": "CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."
-  },
-  {
-    "document_id": "vuln-20260619-103",
-    "processed_at": "2026-06-19T13:24:29.949732+00:00",
-    "incident_title": "Medium-severity dependency vuln in internal tooling",
-    "incident_type": "vulnerability-scan",
-    "reported_severity": "SEV3",
-    "computed_severity": "SEV3",
-    "department": "SecOps",
-    "affected_services_resolved": [
-      "internal-tooling"
-    ],
-    "affected_jurisdictions": [
-      "GLOBAL"
-    ],
-    "sensitivity": "internal",
-    "cvss_score": 5.6,
-    "cve_ids": [
-      "CVE-2026-11002"
-    ],
-    "ttr_minutes": 0,
-    "status": "resolved",
-    "recurrence_fingerprint": "cve2026110020",
-    "routing_tags": [
-      "auto-filed"
-    ],
-    "routing_tag": "auto-approved",
-    "action_item_total": 1,
-    "action_items_without_owner": 0,
-    "summary": "Trivy flagged a medium CVE in a CI image dependency; patched in the next build."
-  },
-  {
-    "document_id": "vuln-20260621-102",
-    "processed_at": "2026-06-21T13:24:29.949732+00:00",
-    "incident_title": "Phishing harvesting compliance staff KYC creds",
-    "incident_type": "phishing",
-    "reported_severity": "SEV2",
-    "computed_severity": "SEV2",
-    "department": "SecOps",
-    "affected_services_resolved": [
-      "kyc"
-    ],
-    "affected_jurisdictions": [
-      "UKGC",
-      "NJ-DGE"
-    ],
-    "sensitivity": "confidential",
-    "cvss_score": null,
-    "cve_ids": [],
-    "ttr_minutes": 30,
-    "status": "monitoring",
-    "recurrence_fingerprint": "phishkyc0001",
-    "routing_tags": [
-      "auto-filed",
-      "exec-escalation",
-      "regulatory-review"
-    ],
-    "routing_tag": "needs-review",
-    "action_item_total": 3,
-    "action_items_without_owner": 0,
-    "summary": "Look-alike KYC portal harvested credentials from 2 compliance analysts; domain blocked."
+    "status": "resolved"
   }
 ]

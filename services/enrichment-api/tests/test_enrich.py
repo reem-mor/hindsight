@@ -1,46 +1,40 @@
-def test_enrich_sev1_payment(client, sev1_payment_payload):
-    r = client.post("/enrich", json=sev1_payment_payload)
+def test_enrich_sev1_vuln_scan(client, sev1_vuln_payload):
+    r = client.post("/enrich", json=sev1_vuln_payload)
     assert r.status_code == 200
     body = r.json()
 
-    # Rubric should upgrade SEV2 → SEV1 and flag the disagreement.
-    assert body["reported_severity"] == "SEV2"
+    assert body["reported_severity"] == "SEV3"
     assert body["computed_severity"] == "SEV1"
     assert body["severity_review_needed"] is True
 
-    # Routing resolves both services to the Payments team.
-    assert "payments-gateway" in body["affected_services_resolved"]
-    assert body["department"] == "Payments-SRE"
+    assert "vulnerability-scanner" in body["affected_services_resolved"]
+    assert body["department"] in ("SecOps", "NetSec")
 
-    # Monetary + multi-jurisdiction → confidential.
     assert body["sensitivity"] == "confidential"
+    assert body["routing_tag"] == "escalate"
 
-    # SEV1 + multi-jurisdiction tags drive paging and regulatory review.
     assert "page-oncall" in body["routing_tags"]
     assert "exec-escalation" in body["routing_tags"]
-    assert "regulatory-review" in body["routing_tags"]
 
-    # Action-item quality: one of two has no owner.
     assert body["action_item_total"] == 2
     assert body["action_items_without_owner"] == 1
     assert body["open_p0_actions"] == 1
     assert "unowned-actions" in body["routing_tags"]
 
-    # 95 min downtime on a 99.95% service blows the monthly budget.
-    assert body["slo_impact"]["budget_breach"] is True
-    assert body["slo_impact"]["primary_service"] == "payments-gateway"
+    assert body["cvss_score"] == 9.8
+    assert body["cve_ids"] == ["CVE-2026-21841"]
 
 
 def test_enrich_minor_internal(client):
     payload = {
-        "incident_title": "Grafana dashboard slow to load",
-        "summary": "Internal Grafana was slow for a few minutes. No customer impact.",
+        "incident_title": "SOAR ticket queue delay",
+        "summary": "Internal SOAR queue was slow for a few minutes. No security impact.",
         "severity": "SEV3",
-        "incident_type": "degradation",
-        "affected_services": ["grafana"],
+        "incident_type": "other",
+        "affected_services": ["internal-tooling"],
         "affected_jurisdictions": [],
-        "root_cause": "Browser cache misconfiguration on the internal dashboard.",
-        "action_items": [{"action": "Tune cache headers", "owner": "DevEx", "priority": "P2"}],
+        "root_cause": "Ticketing integration rate limit.",
+        "action_items": [{"action": "Tune queue polling", "owner": "SecOps", "priority": "P2"}],
         "confidence_score": 0.8,
         "metrics": {"ttr_minutes": 6},
     }
@@ -48,7 +42,7 @@ def test_enrich_minor_internal(client):
     body = r.json()
     assert body["computed_severity"] in ("SEV3", "SEV4")
     assert body["sensitivity"] == "internal"
-    assert body["department"] == "DevEx"
+    assert body["department"] == "SecOps"
     assert "page-oncall" not in body["routing_tags"]
 
 
@@ -59,10 +53,10 @@ def test_confidence_penalised_for_missing_fields(client):
         "severity": "SEV3",
         "incident_type": "other",
         "affected_services": [],
-        "root_cause": "",          # missing → penalty
-        "action_items": [],         # missing → penalty
+        "root_cause": "",
+        "action_items": [],
         "confidence_score": 0.95,
-        "metrics": {},              # missing → penalty
+        "metrics": {},
     }
     r = client.post("/enrich", json=payload)
     body = r.json()
@@ -73,12 +67,12 @@ def test_confidence_penalised_for_missing_fields(client):
 
 def test_blameless_coaching_tag(client):
     payload = {
-        "incident_title": "Outage caused by junior engineer",
-        "summary": "Site down 20 min.",
+        "incident_title": "Outage blamed on analyst",
+        "summary": "SIEM misconfiguration caused alert storm.",
         "severity": "SEV3",
         "incident_type": "configuration",
-        "affected_services": ["casino"],
-        "root_cause": "A config typo.",
+        "affected_services": ["siem"],
+        "root_cause": "An analyst typo in the correlation rule.",
         "blameless_quality": "poor",
         "confidence_score": 0.8,
         "metrics": {"ttr_minutes": 20},

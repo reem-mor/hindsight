@@ -1,5 +1,5 @@
 {
-  "name": "HINDSIGHT \u2014 Postmortem Intelligence",
+  "name": "HINDSIGHT \u2014 Cyber Incident Intelligence",
   "nodes": [
     {
       "parameters": {
@@ -13,7 +13,7 @@
           "ignored": "**/.*"
         }
       },
-      "id": "bba81a9e-401d-45e3-81b5-4b65f5b33181",
+      "id": "ac3dbfed-5920-47d7-972f-14169b36b86d",
       "name": "\ud83d\udcc2 New postmortem",
       "type": "n8n-nodes-base.localFileTrigger",
       "typeVersion": 1,
@@ -26,7 +26,7 @@
       "parameters": {
         "command": "=python3 /data/extractors/extract_document.py \"{{ $json.path }}\" --image-dir /data/tmp_images"
       },
-      "id": "d81c35bb-a35d-4324-993b-2bd26c085b8e",
+      "id": "5b6d5f9c-af0f-44c2-ad1b-80fc7b63d942",
       "name": "\ud83d\udddc Extract text + images",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
@@ -39,7 +39,7 @@
       "parameters": {
         "jsCode": "// stdout of the extractor is a single JSON object\nconst raw = $input.first().json.stdout;\nlet doc;\ntry { doc = JSON.parse(raw); }\ncatch (e) { throw new Error('Extractor did not return JSON: ' + raw?.slice(0,200)); }\nif (!doc.ok) { throw new Error('Extraction failed for ' + doc.filename); }\n// correlation id ties logs across Gemini + enrichment + sheets\nconst corr = 'hs-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7);\nreturn [{ json: { ...doc, correlation_id: corr,\n  has_images: Array.isArray(doc.images) && doc.images.length > 0 } }];"
       },
-      "id": "b42643a2-e0c1-4705-bc1b-9d99f85491a0",
+      "id": "e7115ffa-5b5e-4107-b121-d2dca67406d9",
       "name": "Parse extraction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -57,7 +57,7 @@
           },
           "conditions": [
             {
-              "id": "09bb201a-b6ad-4316-a06c-c51a1f19f4fb",
+              "id": "e0f2ac99-651f-424b-86dc-51521453fc3e",
               "leftValue": "={{ $json.has_images }}",
               "rightValue": true,
               "operator": {
@@ -71,7 +71,7 @@
         },
         "options": {}
       },
-      "id": "0e00b210-75ed-4663-99d6-4fc411395216",
+      "id": "174bde6e-a1ce-4720-9452-2a9b3e10cb86",
       "name": "Has dashboard image?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -99,10 +99,10 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"contents\": [{ \"parts\": [\n    { \"text\": \"Read this SRE dashboard screenshot. Return ONLY JSON: {image_kind, metric_name, unit, anomaly_observed, approx_peak_value, approx_baseline_value, time_window, one_line_summary}.\" },\n    { \"inline_data\": { \"mime_type\": \"image/png\", \"data\": \"{{ $binary.data0 ? $binary.data0.toString('base64') : '' }}\" } }\n  ]}],\n  \"generationConfig\": { \"temperature\": 0.1, \"responseMimeType\": \"application/json\" }\n}",
+        "jsonBody": "={\n  \"contents\": [{ \"parts\": [\n    { \"text\": \"Read this SIEM or vulnerability-scan chart screenshot. Return ONLY JSON: {image_kind, metric_name, unit, anomaly_observed, approx_peak_value, approx_baseline_value, time_window, one_line_summary}.\" },\n    { \"inline_data\": { \"mime_type\": \"image/png\", \"data\": \"{{ $binary.data0 ? $binary.data0.toString('base64') : '' }}\" } }\n  ]}],\n  \"generationConfig\": { \"temperature\": 0.1, \"responseMimeType\": \"application/json\" }\n}",
         "options": {}
       },
-      "id": "fef8ee5d-6079-42e2-9d93-49243161a018",
+      "id": "e56a3e16-c6b6-4b45-b820-9d182b8aa09e",
       "name": "\ud83d\udc41 Gemini Vision \u2014 read chart",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -125,7 +125,7 @@
       "parameters": {
         "jsCode": "// Fold any vision JSON into the extraction item as vision_notes.\nconst items = $input.all();\nconst base = items.find(i => i.json.extracted_text) || items[0];\nlet visionNotes = '';\nconst v = items.find(i => i.json.candidates || i.json.metric_name);\nif (v) {\n  try {\n    const t = v.json.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(v.json);\n    visionNotes = typeof t === 'string' ? t : JSON.stringify(t);\n  } catch (e) { visionNotes = ''; }\n}\nreturn [{ json: { ...base.json, vision_notes: visionNotes } }];"
       },
-      "id": "154fae28-f6bc-4fe2-abc2-787291f2cccd",
+      "id": "c7ce8f7e-03ac-4d0a-9b6d-9ff32b139f78",
       "name": "Attach vision notes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -136,9 +136,9 @@
     },
     {
       "parameters": {
-        "jsCode": "const j = $input.first().json;\nconst prompt = `You are HINDSIGHT, an SRE & SecOps analyst. Read the incident document (postmortem, SIEM export, or vulnerability scan) and return ONLY a valid JSON object matching this schema exactly:\\n{incident_title, summary, severity (SEV1|SEV2|SEV3|SEV4), incident_type (outage|degradation|data-incident|security|deployment-failure|capacity|dependency-failure|configuration|other|vulnerability-scan|malware|phishing|intrusion|ddos), status, affected_services[], affected_jurisdictions[], root_cause, trigger, detection_method, entities:{people[],teams[],systems[],dates[],error_codes[]}, action_items:[{action,owner,priority}], contributing_factors[], sentiment, blameless_quality, cvss_score, cve_ids[], confidence_score, metrics:{detected_at,resolved_at,ttd_minutes,ttr_minutes,customer_impact}}\\nWhen unsure of severity pick the LOWER one (a rubric re-scores it). For CVEs report cvss_score (0-10) exactly; the rubric floors severity on it. Use null for unknowns.\\n\\nVISION NOTES (from embedded dashboards):\\n${j.vision_notes || 'none'}\\n\\nDOCUMENT:\\n${j.extracted_text}`;\nreturn [{ json: { ...j, prompt } }];"
+        "jsCode": "const j = $input.first().json;\nconst prompt = `You are HINDSIGHT, a cybersecurity incident-log analyst. Read the SIEM export, vuln scan, or phishing report and return ONLY a valid JSON object matching this schema exactly:\\n{incident_title, summary, severity (SEV1|SEV2|SEV3|SEV4), incident_type (security|data-incident|vulnerability-scan|malware|phishing|intrusion|ddos|other), status, affected_services[], affected_jurisdictions[], root_cause, trigger, detection_method, entities:{people[],teams[],systems[],dates[],error_codes[]}, action_items:[{action,owner,priority}], contributing_factors[], sentiment, blameless_quality, cvss_score, cve_ids[], confidence_score, metrics:{detected_at,resolved_at,ttd_minutes,ttr_minutes,customer_impact}}\\nFor vuln scans set cvss_score and cve_ids verbatim. When unsure of severity pick the LOWER one.\\n\\nVISION NOTES (from embedded SIEM/scan charts):\\n${j.vision_notes || 'none'}\\n\\nDOCUMENT:\\n${j.extracted_text}`;\nreturn [{ json: { ...j, prompt } }];"
       },
-      "id": "6d8a66d7-aaad-4d9f-9740-6a486dbdc418",
+      "id": "6af016d2-3471-4be5-836f-5a5f9528da25",
       "name": "Build extraction prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -169,7 +169,7 @@
         "jsonBody": "={\n  \"contents\": [{ \"parts\": [{ \"text\": {{ JSON.stringify($json.prompt) }} }] }],\n  \"generationConfig\": { \"temperature\": 0.1, \"responseMimeType\": \"application/json\" }\n}",
         "options": {}
       },
-      "id": "cac5ecbe-ab38-4d14-881f-ab72a828da24",
+      "id": "60732ffc-fb98-4d80-b4a6-893546a2b4da",
       "name": "\ud83e\udde0 Gemini \u2014 extract incident",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -191,7 +191,7 @@
       "parameters": {
         "jsCode": "const prev = $('Build extraction prompt').first().json;\nconst resp = $input.first().json;\nlet txt = resp.candidates?.[0]?.content?.parts?.[0]?.text;\nif (!txt) throw new Error('Gemini returned no text');\ntxt = txt.replace(/^```json/,'').replace(/```$/,'').trim();\nlet g; try { g = JSON.parse(txt); } catch(e){ throw new Error('Bad JSON from Gemini: '+txt.slice(0,200)); }\n// shape payload for the enrichment API\ng.filename = prev.filename;\ng.correlation_id = prev.correlation_id;\nreturn [{ json: g }];"
       },
-      "id": "c089c6c9-d27d-4027-9f20-2a2fccd42ac1",
+      "id": "8082a2fc-7084-4626-9bab-c2e5cc5ae225",
       "name": "Parse Gemini JSON",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -209,7 +209,7 @@
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "7e51ffe9-653c-4bcc-bd6f-cebac58dfc0d",
+      "id": "53ce26ee-612b-4250-b1e0-45854e0a7d95",
       "name": "\u2699\ufe0f Enrich (FastAPI)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -223,9 +223,9 @@
     },
     {
       "parameters": {
-        "jsCode": "const g = $('Parse Gemini JSON').first().json;\nconst e = $input.first().json;\nconst services = (e.affected_services_resolved || []).join(', ');\nconst md = `# ${g.incident_title}\\n\\n**Computed severity:** ${e.computed_severity}  (reported ${e.reported_severity})\\n**Team:** ${e.department}    **Sensitivity:** ${e.sensitivity}\\n**Services:** ${services}\\n**Jurisdictions:** ${(e.affected_jurisdictions||[]).join(', ')}\\n\\n## Summary\\n${g.summary}\\n\\n## Root cause\\n${g.root_cause || 'n/a'}\\n\\n## Routing\\n${(e.routing_tags||[]).join(', ')}\\n`;\nconst row = {\n  document_id: e.document_id,\n  processed_at: e.processed_at,\n  incident_title: g.incident_title,\n  incident_type: g.incident_type,\n  reported_severity: e.reported_severity,\n  computed_severity: e.computed_severity,\n  department: e.department,\n  affected_services: services,\n  affected_jurisdictions: (e.affected_jurisdictions||[]).join(', '),\n  sensitivity: e.sensitivity,\n  ttr_minutes: g.metrics?.ttr_minutes ?? '',\n  status: g.status || 'resolved',\n  recurrence_fingerprint: e.recurrence_fingerprint,\n  routing_tags: (e.routing_tags||[]).join(', '),\n  routing_tag: e.routing_tag || '',\n  cvss_score: (e.cvss_score ?? g.cvss_score ?? ''),\n  cve_ids: (e.cve_ids||[]).join(', '),\n  action_item_total: e.action_item_total ?? '',\n  action_items_without_owner: e.action_items_without_owner ?? '',\n  summary: (g.summary||'').slice(0,500),\n  confidence_score: e.confidence_score ?? g.confidence_score ?? ''\n};\nconst isSev1 = e.computed_severity === 'SEV1';\nreturn [{ json: { row, markdown: md, is_sev1: isSev1, e, g,\n  out_path: `/data/output_docs/${e.document_id}.md` } }];"
+        "jsCode": "function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}\nfunction actionsCsv(a){if(!a||!a.length)return'';return a.map(x=>{const o=(x&&x.owner&&String(x.owner).trim())?String(x.owner):'UNOWNED';const p=(x&&x.priority)?String(x.priority):'-';return p+': '+String(x.action||'')+' ('+o+')';}).join('; ');}\nfunction fileType(n){const m=String(n||'').match(/\\.([^.]+)$/);return m?m[1].toLowerCase():'txt';}\nconst g=$('Parse Gemini JSON').first().json;\nconst e=$input.first().json;\nconst classification=String(e.incident_type||g.incident_type||'other');\nconst filename=String(e.source_filename||g.filename||g.source_filename||'unknown');\nconst sentiment=String(g.sentiment||'neutral');\nconst routingTag=String(e.routing_tag||'auto-approved');\nconst summary=String(g.summary||'').slice(0,500);\nconst actionItems=actionsCsv(g.action_items||[]);\nconst row={document_id:e.document_id,filename:filename,file_type:fileType(filename),processed_at:e.processed_at,classification:classification,department:e.department,sentiment:sentiment,confidence_score:e.confidence_score,summary:summary,routing_tag:routingTag,sensitivity:e.sensitivity,action_items:actionItems,cvss_score:e.cvss_score,cve_ids:(e.cve_ids||[]).join(', ')};\nconst emailHtml='<h2>Document Processed</h2><p><b>File:</b> '+esc(filename)+'</p>+'<p><b>Classification:</b> '+esc(classification)+'</p><p><b>Sentiment:</b> '+esc(sentiment)+'</p>+'<p><b>Department:</b> '+esc(e.department)+'</p><p><b>Sensitivity:</b> '+esc(e.sensitivity)+'</p>+'<p><b>Routing tag:</b> '+esc(routingTag)+'</p><h3>Summary</h3><p>'+esc(summary)+'</p>+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>';const subjDigest='['+classification+'] New document processed: '+filename;\nconst subjSev1='[CONFIDENTIAL ESCALATE] '+filename+' - '+e.department;\nconst isSev1=e.computed_severity==='SEV1';\nreturn [{json:{row,markdown:'# '+e.computed_severity+' - '+classification,is_sev1:isSev1,e,g,emailSubjectDigest:subjDigest,emailHtmlDigest:emailHtml,emailSubjectSev1:subjSev1,emailHtmlSev1:emailHtml,out_path:`/data/output_docs/${e.document_id}.md`}}];"
       },
-      "id": "b3e00954-7ccf-4142-be3b-1505500af417",
+      "id": "589b387f-c326-4ca0-9299-706594a14937",
       "name": "Compose record + outputs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -238,7 +238,7 @@
       "parameters": {
         "jsCode": "return [{ json: $input.first().json.row }];"
       },
-      "id": "e77c318b-b599-4841-bb4d-bd53387a68ca",
+      "id": "c3a53a51-3d2e-4916-aee2-e40040d040ab",
       "name": "Flatten row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -267,7 +267,7 @@
         },
         "options": {}
       },
-      "id": "b61c931d-ff2d-4e6f-b88b-20353971566b",
+      "id": "a903a027-5ac2-43ed-b6f0-ad4b6574315f",
       "name": "\ud83d\udcca Append to registry",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -286,7 +286,7 @@
       "parameters": {
         "jsCode": "const j = $('Compose record + outputs').first().json;\nconst buff = Buffer.from(j.markdown, 'utf8');\nreturn [{ json: { out_path: j.out_path },\n  binary: { data: { data: buff.toString('base64'),\n    mimeType: 'text/markdown', fileName: j.document_id + '.md' } } }];"
       },
-      "id": "1d81e041-d963-4a3b-9c20-e58c0e008247",
+      "id": "0d69b9de-9c1d-46e5-a813-0d60c5ee90ce",
       "name": "Markdown \u2192 file",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -302,7 +302,7 @@
         "dataPropertyName": "data",
         "options": {}
       },
-      "id": "89fe67a1-4ca8-4672-9aa8-b9546600bfc5",
+      "id": "a30259f9-8ece-43d4-8577-c23d44a36cc5",
       "name": "\ud83d\udcbe Write output doc",
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
@@ -320,7 +320,7 @@
           },
           "conditions": [
             {
-              "id": "6e8be39e-0669-4676-95dc-ab8f6b68b871",
+              "id": "ed832d13-8263-4bb1-a9b6-41220ce0a61d",
               "leftValue": "={{ $json.is_sev1 }}",
               "rightValue": true,
               "operator": {
@@ -334,7 +334,7 @@
         },
         "options": {}
       },
-      "id": "19c4442a-0000-4992-87c8-071a6db8db33",
+      "id": "ed78d928-acbb-438c-8160-a8dea1dce152",
       "name": "SEV1?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -346,15 +346,15 @@
     {
       "parameters": {
         "operation": "send",
-        "sendTo": "=oncall@example.com",
-        "subject": "=\ud83d\udea8 SEV1 PAGE \u2014 {{ $json.g.incident_title }} ({{ $json.e.department }})",
+        "sendTo": "=reem.mor3@gmail.com",
+        "subject": "={{ $('Compose record + outputs').first().json.emailSubjectSev1 }}",
         "emailType": "html",
-        "message": "=<h2 style='color:#FF4D5E'>SEV1 incident filed</h2><p><b>{{ $json.g.incident_title }}</b></p><p>Team: {{ $json.e.department }} \u00b7 Services: {{ ($json.e.affected_services_resolved||[]).join(', ') }}</p><p>Jurisdictions: {{ ($json.e.affected_jurisdictions||[]).join(', ') }}</p><p>{{ $json.g.summary }}</p><p>Routing: {{ ($json.e.routing_tags||[]).join(', ') }}</p><hr><i>HINDSIGHT \u00b7 auto-paged because computed severity = SEV1</i>",
+        "message": "={{ $('Compose record + outputs').first().json.emailHtmlSev1 }}",
         "options": {
           "priority": "high"
         }
       },
-      "id": "6abde249-13da-44b7-bb9a-ef518155e26c",
+      "id": "6a4fdda7-ee64-49fe-a411-66ce3d0d6e9b",
       "name": "\ud83d\udea8 Page on-call (SEV1)",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
@@ -372,13 +372,13 @@
     {
       "parameters": {
         "operation": "send",
-        "sendTo": "=reliability@example.com",
-        "subject": "=[{{ $json.e.computed_severity }}] {{ $json.g.incident_title }}",
+        "sendTo": "=reem.mor3@gmail.com",
+        "subject": "={{ $('Compose record + outputs').first().json.emailSubjectDigest }}",
         "emailType": "html",
-        "message": "=<h2>Postmortem processed</h2><p><b>{{ $json.g.incident_title }}</b> \u2014 {{ $json.e.computed_severity }}</p><p>Team: {{ $json.e.department }} \u00b7 Sensitivity: {{ $json.e.sensitivity }}</p><p>{{ $json.g.summary }}</p><p>Routing: {{ ($json.e.routing_tags||[]).join(', ') }}</p><hr><i>HINDSIGHT \u00b7 n8n + Gemini 3</i>",
+        "message": "={{ $('Compose record + outputs').first().json.emailHtmlDigest }}",
         "options": {}
       },
-      "id": "26967636-9b93-4fc4-8aee-ca390e594225",
+      "id": "a58bd902-55d6-4fb9-b65a-32ec266c0cde",
       "name": "\ud83d\udce7 Send digest",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
@@ -395,13 +395,13 @@
     },
     {
       "parameters": {
-        "content": "## HINDSIGHT \u2014 postmortem intelligence pipeline\nDrop a postmortem (.pdf/.docx/.md) into **/data/incoming_docs**.\nGemini extracts an SRE schema \u2192 FastAPI re-scores severity, routes to the owning team, computes error-budget burn & a recurrence fingerprint \u2192 Sheets + Gmail.",
+        "content": "## HINDSIGHT \u2014 cyber incident log pipeline\nDrop a SIEM export, vuln scan, or phishing report (.pdf/.md) into **/data/incoming_docs**.\nGemini extracts \u2192 FastAPI re-scores severity & routes \u2192 Sheets + Gmail.",
         "height": 180,
         "width": 540,
         "color": 4
       },
-      "id": "ce4a6e29-a9a5-4ef7-9232-08ec11cffca2",
-      "name": "Note 1f8da0",
+      "id": "72e87263-381c-4341-a79e-230eb0ebeff9",
+      "name": "Note 0e07fe",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -416,8 +416,8 @@
         "width": 300,
         "color": 5
       },
-      "id": "c8d620f0-99fc-4688-9a5e-89d84a754ca0",
-      "name": "Note b30625",
+      "id": "12f98c78-ab6d-4c54-b830-ee9c7543a895",
+      "name": "Note 5350c5",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -432,8 +432,8 @@
         "width": 320,
         "color": 3
       },
-      "id": "f29c7b84-c7c8-4560-805c-d7e5e1b5c828",
-      "name": "Note 9f34cc",
+      "id": "4c98a271-5878-4d55-848e-a6e05719e33a",
+      "name": "Note 018664",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -448,8 +448,8 @@
         "width": 280,
         "color": 6
       },
-      "id": "839a3142-c017-4136-a9e3-c3c7a1ea670b",
-      "name": "Note d9faa3",
+      "id": "4e3213f0-db9c-47b2-b918-2e0127ea70dd",
+      "name": "Note 5ccc58",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [

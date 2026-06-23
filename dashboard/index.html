@@ -264,8 +264,8 @@ function normalize(r){
   return {
     id: r.document_id || r.id || '',
     at: r.processed_at || r.detected_at || '',
-    title: r.incident_title || r.title || 'Untitled incident',
-    type: r.incident_type || 'unknown',
+    title: r.incident_title || r.filename || r.title || 'Untitled incident',
+    type: r.incident_type || r.classification || 'unknown',
     reported: (r.reported_severity||'').toUpperCase() || null,
     sev: (r.computed_severity||r.severity||'SEV4').toUpperCase(),
     dept: r.department || '—',

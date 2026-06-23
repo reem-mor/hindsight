@@ -2,8 +2,13 @@
   "workflow_id": "aYEv22StywIPL3Rq",
   "name": "HINDSIGHT \u2014 Postmortem Intelligence (Cloud)",
   "active": false,
-  "nodes_total": 15,
+  "nodes_total": 16,
   "checks": [
+    {
+      "status": "ok",
+      "item": "Required nodes",
+      "detail": "7"
+    },
     {
       "status": "ok",
       "item": "Workflow reachable via API",
@@ -65,9 +70,24 @@
       "detail": "{\"googleSheetsOAuth2Api\": {\"id\": \"6CH1fQ50fz9t2M9G\", \"name\": \"Google Sheets Amdocs Course API\"}}"
     },
     {
+      "status": "ok",
+      "item": "Sheets spreadsheet ID",
+      "detail": "1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk"
+    },
+    {
       "status": "review",
-      "item": "Sheets document/tab",
-      "detail": "{\"__rl\": true, \"mode\": \"id\", \"value\": \"\", \"cachedResultName\": \"PASTE your HINDSIGHT registry spreadsheet ID here\"}"
+      "item": "Sheets tab name (verify in Google UI)",
+      "detail": "'Incidents' \u2014 must exist; run scripts/bootstrap_incidents_tab.py if missing"
+    },
+    {
+      "status": "ok",
+      "item": "Sheets handling extra fields",
+      "detail": "ignoreIt"
+    },
+    {
+      "status": "ok",
+      "item": "Flatten for Sheets node",
+      "detail": "present \u2014 Sheets gets 14 columns only"
     },
     {
       "status": "ok",
@@ -97,7 +117,7 @@
     {
       "status": "ok",
       "item": "Recent executions",
-      "detail": "495=error, 483=success, 481=success"
+      "detail": "503=error, 502=error, 495=error"
     }
   ]
 }

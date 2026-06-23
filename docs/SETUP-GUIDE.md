@@ -1,206 +1,141 @@
-# HINDSIGHT — Setup guide & session summary
+# HINDSIGHT — Setup guide (cyber incident logs)
 
-**Saved:** 2026-06-22 · **Workflow:** `aYEv22StywIPL3Rq` on `https://reemmor.app.n8n.cloud`
-
-This document captures what we built, what is already verified, and **exactly what you
-must configure yourself** before a live end-to-end run (real Gemini call → Sheet row → Gmail).
+**Workflow:** `aYEv22StywIPL3Rq` on `https://reemmor.app.n8n.cloud`  
+**Scenario:** Cybersecurity incident logs (SIEM, vuln scans, phishing, intrusion writeups)
 
 ---
 
-## 1. What we built (conversation summary)
+## 1. Architecture (two paths)
 
-| Layer | What it does | Where |
-|---|---|---|
-| **n8n Cloud pipeline** | Form upload → Gemini extract → enrich → Sheets + SEV1 email branch | `n8n/cloud/` · workflow id `aYEv22StywIPL3Rq` |
-| **n8n self-hosted pipeline** | File trigger + Python extractor + Vision + FastAPI enrich | `n8n/hindsight_workflow.json` + `docker compose` |
-| **Enrichment brain** | Severity rubric, CVSS floor, SecOps routing, SLO, sensitivity | `services/enrichment-api/` |
-| **Cyber hybrid** | CVSS ≥9 → SEV1, vuln-scan/SIEM/phishing types, `routing_tag` | models + `enrich.js` parity |
-| **Dashboard** | Severity, sensitivity, routing, CVSS from CSV or sample JSON | `dashboard/index.html` |
-| **MCP + scripts** | n8n API verify, Playwright screenshots, course-parity MCP | `.cursor/mcp.json`, `scripts/` |
-| **Tests** | 48 pytest + 61 node-body + API smoke | `docs/VALIDATION.md` |
+| Path | Trigger | Enrichment | Output |
+|---|---|---|---|
+| **n8n Cloud** (grading) | Form upload | Code node (`enrich.js`) | Google Sheets + Gmail |
+| **Self-hosted** | `incoming_docs/` watcher | FastAPI `/enrich` | Sheets + Gmail + `output_docs/` |
 
-**Design principle:** LLM extracts; deterministic service decides (severity, routing, CVSS).
+Both use Gemini 3 Flash extraction and the same SecOps routing rubric (CVSS floor, `routing_tag`, sensitivity).
 
 ---
 
-## 2. Live audit results (your n8n Cloud — today)
+## 2. Why Google credentials are not in the repo
 
-See also: [WHY-NOT-GOOGLE-MCP.md](WHY-NOT-GOOGLE-MCP.md) — why Sheets/Gmail/Gemini are not copied from amdocs files.
+`GEMINI_API_KEY` and `GOOGLE_OAUTH_*` in amdocs course files are **placeholders or empty**. Live OAuth for Sheets and Gmail lives in the **n8n Cloud credential vault** only. You verify/reconnect in the n8n UI — you cannot copy them from `amdocs-ai-course` files.
 
-**Registry spreadsheet created via n8n API:** `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk`  
-([open in Google Sheets](https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit))
+What *does* merge from amdocs: `N8N_API_KEY`, optional dev keys (`CONTEXT7_API_KEY`, etc.) via `scripts/merge_amdocs_env.py`.
 
-Run anytime: `.\.venv\Scripts\python.exe scripts\audit_n8n_cloud.py`
-
-| Check | Status | Detail |
-|---|---|---|
-| Workflow exists | ✅ | `HINDSIGHT — Postmortem Intelligence (Cloud)` |
-| All 15 nodes | ✅ | Present |
-| Gemini credential | ✅ | `Google Gemini(PaLM) Api account` (`466Fl1znBcikPxtF`) |
-| Google Sheets OAuth | ✅ | `Google Sheets Amdocs Course API` |
-| Gmail OAuth | ✅ | `Gmail Amdocs course API` → **To:** `reem.mor3@gmail.com` |
-| Pinned dry-runs | ✅ | Executions `481`, `483` = `success` |
-| **Workflow active** | ⚠️ **YOU** | `active: false` (still draft) |
-| **Spreadsheet ID** | ⚠️ **YOU** | Created: `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk` — paste into **Append to Registry** if empty |
-| **Gemini model** | ⚠️ **YOU** | URL uses `gemini-3-flash` — use `gemini-3-flash-preview` if API returns 404 |
-| Playwright UI login | ⚠️ **YOU** | Browser automation hits sign-in (no session cookie) — use your logged-in browser for canvas screenshots |
-
-Full JSON: [`n8n-cloud-audit.json`](n8n-cloud-audit.json)
+**MCP (optional dev):** `.cursor/mcp.json` — `n8n-workflows`, `playwright`, `context7`. Reload MCP after editing `.env`.
 
 ---
 
-## 3. What you must configure (checklist)
-
-### A. Local repo (`c:\dev\hindsight`)
-
-| Step | Where | Action |
-|---|---|---|
-| 1 | Copy `.env.example` → `.env` | Set at minimum: `N8N_API_KEY`, `N8N_API_URL`, `AMDOCS_COURSE_ROOT` |
-| 2 | Cursor → Settings → MCP | Reload MCP after editing `.env` |
-| 3 | Python venv | `py -3.12 -m venv .venv` then `pip install -r services/enrichment-api/requirements.txt` |
-| 4 | Verify | `pytest services/enrichment-api -q` and `node n8n/cloud/tests/test_node_bodies.mjs` |
-
-`N8N_API_KEY`: n8n Cloud → **Settings** → **API** → Create API key.
-
-### B. n8n Cloud — **blocking for live E2E**
-
-Open: https://reemmor.app.n8n.cloud/workflow/aYEv22StywIPL3Rq
-
-#### B1. Create the Google Sheet registry ⚠️ **REQUIRED**
-
-1. Google Sheets → **New spreadsheet** → name it e.g. `HINDSIGHT Incident Registry`.
-2. Add tab **`Incidents`** with **row 1 headers** (exact names — auto-map depends on this):
-
-```
-document_id | processed_at | correlation_id | source_filename | incident_title | incident_type | status | reported_severity | computed_severity | severity_score | severity_review | department | routed_teams | affected_services | affected_jurisdictions | sensitivity | slo_target | budget_burn_pct | budget_breach | recurrence_fingerprint | routing_tags | action_items_total | action_items_unowned | open_p0_actions | confidence_score | ttr_minutes | summary
-```
-
-3. Copy the **spreadsheet ID** from the URL:  
-   `https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit`
-4. In n8n → node **Append to Registry**:
-   - Credential: `Google Sheets Amdocs Course API` (already selected)
-   - **Document:** paste spreadsheet ID
-   - **Sheet:** `Incidents`
-   - Operation: Append row · Mapping: auto-map
-
-5. **(Optional, for dashboard)** File → Share → Publish to web → CSV → paste URL into `SHEETS_CSV_URL` at top of `dashboard/index.html`.
-
-#### B2. Confirm Gmail targets
-
-Nodes **Page On-Call (SEV1)** and **Postmortem Filed**:
-
-- Credential: `Gmail Amdocs course API` ✅
-- **To:** currently `reem.mor3@gmail.com` — change if you want a different inbox.
-
-#### B3. Gemini model (if live extract fails)
-
-Node **Gemini — Extract Incident** → URL:
-
-- Rubric string: `.../models/gemini-3-flash:generateContent`
-- If 404: change to `.../models/gemini-3-flash-preview:generateContent`
-
-Credential `Google Gemini(PaLM) Api account` is already bound ✅.
-
-#### B4. Activate the workflow ⚠️ **REQUIRED**
-
-Top-right toggle **Inactive → Active**.  
-Until active, the **Submit a Postmortem** form URL will not accept live uploads.
-
-Form URL (after activate): open node **Submit a Postmortem** → **Test URL** / production form link.
-
-#### B5. First live test
-
-1. Upload `samples/vuln_scan_critical_openssl.md` or `samples/payments_sev1_checkout_outage.md` via the form.
-2. Check execution log (all green).
-3. Confirm new row in `Incidents` tab.
-4. SEV1 sample → email `[SEV1 PAGE] ...` in Gmail; SEV3 sample → digest email.
-
-### C. Self-hosted Docker stack (optional — local file trigger)
-
-| Step | Where | Action |
-|---|---|---|
-| 1 | `docker compose up --build` | Starts n8n + enrichment-api on compose network |
-| 2 | Import | `n8n/hindsight_workflow.json` into **local** n8n (not Cloud) |
-| 3 | Credentials | Gemini HTTP header, Sheets OAuth, Gmail OAuth — see [`n8n/SETUP.md`](../n8n/SETUP.md) |
-| 4 | Drop file | `incoming_docs/` |
-
-Cloud and self-hosted are **two deployments** — configure both only if you need both.
-
-### D. Google Cloud / API console (behind n8n credentials)
-
-You do **not** paste keys into the repo. n8n stores them:
-
-| Integration | n8n credential type | Where to create key / OAuth |
-|---|---|---|
-| Gemini | `googlePalmApi` or HTTP `x-goog-api-key` | [Google AI Studio](https://aistudio.google.com/app/apikey) |
-| Google Sheets | `googleSheetsOAuth2Api` | Google Cloud Console → APIs → Sheets API enabled + OAuth client used by n8n |
-| Gmail | `gmailOAuth2` | Google Cloud Console → Gmail API enabled + OAuth consent |
-
-Your instance already has course credentials; re-authorize if you see “credential expired” on a node.
-
----
-
-## 4. What agents cannot do for you
-
-| Action | Why |
-|---|---|
-| Log into n8n UI | Playwright session is not authenticated (sign-in page) |
-| Create your Google Sheet | Needs your Google account in browser |
-| Send real Gmail | Needs OAuth token in n8n + active workflow + successful run |
-| Activate workflow without your UI click | API can update, but you should verify nodes first |
-| Store secrets in git | `.env` and n8n credentials stay out of repo |
-
----
-
-## 5. Quick verification commands
+## 3. Local setup (once)
 
 ```powershell
 cd c:\dev\hindsight
+copy .env.example .env
+.\.venv\Scripts\python.exe scripts\merge_amdocs_env.py
+```
 
-# Unit + node parity
+| Variable | Source |
+|---|---|
+| `N8N_API_KEY` | n8n Cloud → Settings → API |
+| `N8N_API_URL` | Defaults to `https://reemmor.app.n8n.cloud` (never overwritten by placeholder) |
+| `HINDSIGHT_SHEET_ID` | Optional; default `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk` |
+
+```powershell
 .\.venv\Scripts\python.exe -m pytest services\enrichment-api -q
 node n8n\cloud\tests\test_node_bodies.mjs
-
-# n8n Cloud API
-.\.venv\Scripts\python.exe scripts\verify_n8n_cloud.py
 .\.venv\Scripts\python.exe scripts\audit_n8n_cloud.py
-.\.venv\Scripts\python.exe scripts\list_n8n_executions.py
-
-# Regenerate screenshots
-node scripts\capture_screenshots.mjs
-node scripts\capture_n8n_evidence.mjs
-node scripts\capture_registry_evidence.mjs
 ```
 
 ---
 
-## 6. Submission artifacts (already in repo)
+## 4. n8n Cloud checklist
 
-| Artifact | Path |
+Open: https://reemmor.app.n8n.cloud/workflow/aYEv22StywIPL3Rq
+
+### Credentials (verify in UI)
+
+| Credential | Nodes |
 |---|---|
-| Screenshots | `docs/screenshot-*.png` |
-| Traceability | `docs/traceability-matrix.md` |
-| Edge cases | `docs/edge-case-matrix.md` |
-| Validation report | `docs/VALIDATION.md` |
-| MCP setup | `docs/MCP-SETUP.md` |
+| `Google Gemini(PaLM) Api account` | Gemini — Extract Incident |
+| `Google Sheets Amdocs Course API` | Append to Registry |
+| `Gmail Amdocs course API` | Page On-Call / Postmortem Filed |
+
+### Google Sheet
+
+Spreadsheet: `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk` · tab **`Incidents`**
+
+**Row 1 headers** (assignment §7.2 + cyber bonus):
+
+```
+document_id | filename | file_type | processed_at | classification | department | sentiment | confidence_score | summary | routing_tag | sensitivity | action_items | cvss_score | cve_ids
+```
+
+Patch workflow + node bodies from repo:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\sync_n8n_cloud_nodes.py
+# Sheet ID + Incidents tab bootstrap:
+.\.venv\Scripts\python.exe scripts\setup_n8n_hindsight.py 1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk
+# Or tab/headers only:
+.\.venv\Scripts\python.exe scripts\bootstrap_incidents_tab.py
+```
+
+### Troubleshooting: Append to Registry fails
+
+| Symptom | Fix |
+|---|---|
+| **Sheet/tab not found (`Incidents`)** | Run `bootstrap_incidents_tab.py` (writes headers on `Sheet1`) then **rename tab to `Incidents`**. Or rename `Sheet1` → `Incidents` and paste headers manually. |
+| **Unexpected fields in node input** | In **Append to Registry** set Handling extra fields → **Ignore them**, or run `sync_n8n_cloud_nodes.py` (adds **Flatten for Sheets** node). |
+| **LangChain `tool_use_id` in AI chat** | n8n workflow **assistant** error — ignore it. Use **Executions** tab for real failures. |
+| **Permission denied** | Reconnect **Google Sheets Amdocs Course API**; share spreadsheet with that Google account. |
+
+### Activate + live test
+
+1. Toggle workflow **Active**
+2. Copy **Production URL** from **Submit a Postmortem** (form trigger)
+3. Upload `samples/vuln_scan_critical_openssl.md`
+4. Confirm row in Sheet + email at `reem.mor3@gmail.com`
+
+If Gemini 404: change model URL to `gemini-3-flash-preview`.
 
 ---
 
-## 7. Your minimum “go live” order
+## 5. Self-hosted (bonus path)
 
-1. **Create Sheet + paste ID** in **Append to Registry** ← only true blocker found in audit  
-2. **Fix Gemini model** if first live run fails on model name  
-3. **Activate** workflow  
-4. **Submit** a SEV1 sample via form → confirm **Sheet row + email**  
-5. **(Optional)** Publish sheet CSV → dashboard live data  
+```powershell
+docker compose up --build -d
+```
 
-After step 4, re-run `scripts/audit_n8n_cloud.py` — `Workflow active` should show `True` and Sheets document should show your spreadsheet ID.
+Import `n8n/hindsight_workflow.json`, configure credentials per `n8n/SETUP.md`, drop files in `incoming_docs/`.
+
+---
+
+## 6. Bonus features delivered
+
+| Bonus | Implementation |
+|---|---|
+| **Gemini Vision** | Self-hosted: `Has dashboard image?` → Vision HTTP node. Cloud: PDF `inline_data` in Prepare Document. Sample: `samples/make_cyber_pdf_sample.py` |
+| **Live dashboard** | `dashboard/index.html` — CVSS, sensitivity, routing_tag views; publish Sheet CSV or use bundled sample JSON |
+| **Retry logic** | Gemini nodes: `retryOnFail` 5× / 3s. Enrich HTTP: 3× / 1.5s |
+| **Sensitivity alerting** | SEV1 → **Page On-Call** (high priority HTML). CVSS ≥ 9 → `routing_tag=escalate` + SEV1 page |
+
+---
+
+## 7. Scripts
+
+| Script | Purpose |
+|---|---|
+| `merge_amdocs_env.py` | Pull keys into `.env` |
+| `setup_n8n_hindsight.py` | Patch spreadsheet ID on Cloud workflow |
+| `sync_n8n_cloud_nodes.py` | Push `n8n/cloud/nodes/*.js` + Flatten node to Cloud |
+| `bootstrap_incidents_tab.py` | Create `Incidents` tab + header row via n8n |
+| `audit_n8n_cloud.py` | Health report → `docs/n8n-cloud-audit.json` |
+| `capture_screenshots.mjs` | Dashboard + FastAPI screenshots |
 
 ---
 
 ## 8. Related docs
 
-- Cloud deployment: [`n8n/cloud/README.md`](../n8n/cloud/README.md)
-- Self-hosted import: [`n8n/SETUP.md`](../n8n/SETUP.md)
-- Architecture: [`docs/architecture.md`](architecture.md)
-- Prior deployment session: [`docs/sessions/2026-06-21-n8n-cloud-deployment.md`](sessions/2026-06-21-n8n-cloud-deployment.md)
+- [`docs/traceability-matrix.md`](traceability-matrix.md) — grading map
+- [`docs/VALIDATION.md`](VALIDATION.md) — test commands + evidence
+- [`n8n/cloud/README.md`](../n8n/cloud/README.md) — Cloud node bodies

@@ -1,24 +1,16 @@
 // HINDSIGHT enrichment - faithful port of the FastAPI /enrich brain.
 // Pure computation (no network). Mirrors services/enrichment-api in the repo.
-const DEFAULTS = { team: "SRE-Platform", tier: "standard", slo: 99.9, jurisdictions: ["GLOBAL"] };
+const DEFAULTS = { team: "SecOps", tier: "standard", slo: 99.0, jurisdictions: ["GLOBAL"] };
 const SERVICES = [
-  { name: "payments-gateway", aliases: ["payments","payment gateway","pay-gw","psp","deposits","withdrawals"], team: "Payments-SRE", tier: "critical", slo: 99.95, jurisdictions: ["UKGC","NJ-DGE","MGM"] },
-  { name: "wallet", aliases: ["wallet-svc","player wallet","balance service","ledger"], team: "Payments-SRE", tier: "critical", slo: 99.95, jurisdictions: ["UKGC","NJ-DGE","MGM"] },
-  { name: "casino-platform", aliases: ["casino","rgs","game server","slots platform","game-platform"], team: "Platform-SRE", tier: "critical", slo: 99.9, jurisdictions: ["UKGC","NJ-DGE"] },
-  { name: "sportsbook", aliases: ["betting engine","trading platform","odds-service","sports"], team: "Sportsbook-SRE", tier: "critical", slo: 99.9, jurisdictions: ["UKGC","NJ-DGE","MGM"] },
-  { name: "identity", aliases: ["auth","authentication","login","sso","session-service","idp"], team: "Identity-SRE", tier: "critical", slo: 99.95, jurisdictions: ["GLOBAL"] },
-  { name: "kyc", aliases: ["know your customer","onboarding","verification","aml-screening"], team: "Compliance-Eng", tier: "high", slo: 99.5, jurisdictions: ["UKGC","NJ-DGE","MGM"] },
-  { name: "geo-compliance", aliases: ["geolocation","geo-gate","jurisdiction-check","geo-fencing"], team: "Compliance-Eng", tier: "critical", slo: 99.9, jurisdictions: ["NJ-DGE","MGM"] },
-  { name: "promotions", aliases: ["bonus engine","promo","rewards","loyalty"], team: "Engagement-Eng", tier: "high", slo: 99.5, jurisdictions: ["UKGC","NJ-DGE"] },
-  { name: "reporting-db", aliases: ["data warehouse","analytics db","regulatory reporting","dwh"], team: "Data-Platform", tier: "high", slo: 99.0, jurisdictions: ["UKGC","NJ-DGE","MGM"] },
-  { name: "edge-cdn", aliases: ["cdn","edge","waf","reverse proxy","ingress"], team: "Platform-SRE", tier: "high", slo: 99.9, jurisdictions: ["GLOBAL"] },
-  { name: "notifications", aliases: ["email service","sms gateway","push","comms"], team: "Engagement-Eng", tier: "standard", slo: 99.0, jurisdictions: ["GLOBAL"] },
-  { name: "internal-tooling", aliases: ["jenkins","ci","ci/cd","deploy pipeline","grafana","internal dashboard"], team: "DevEx", tier: "internal", slo: 99.0, jurisdictions: ["GLOBAL"] },
-  { name: "siem", aliases: ["splunk","elastic siem","security monitoring","log pipeline","wazuh","sentinel"], team: "SecOps", tier: "high", slo: 99.5, jurisdictions: ["GLOBAL"] },
-  { name: "endpoint-security", aliases: ["edr","antivirus","av","crowdstrike","defender","endpoint protection","xdr"], team: "SecOps", tier: "high", slo: 99.5, jurisdictions: ["GLOBAL"] },
-  { name: "vulnerability-scanner", aliases: ["nessus","qualys","vuln scanner","tenable","scanner","trivy","snyk"], team: "SecOps", tier: "standard", slo: 99.0, jurisdictions: ["GLOBAL"] }
+  { name: "siem", aliases: ["splunk","elastic siem","security monitoring","log pipeline","wazuh","sentinel","siem cluster"], team: "SecOps", tier: "high", slo: 99.5, jurisdictions: ["GLOBAL"] },
+  { name: "endpoint-security", aliases: ["edr","antivirus","av","crowdstrike","defender","endpoint protection","xdr","hosts"], team: "SecOps", tier: "high", slo: 99.5, jurisdictions: ["GLOBAL"] },
+  { name: "vulnerability-scanner", aliases: ["nessus","qualys","vuln scanner","tenable","scanner","trivy","snyk","openvas"], team: "SecOps", tier: "standard", slo: 99.0, jurisdictions: ["GLOBAL"] },
+  { name: "auth", aliases: ["identity","login","sso","idp","authentication","session-service","oauth"], team: "Identity-Sec", tier: "high", slo: 99.5, jurisdictions: ["GLOBAL"] },
+  { name: "network", aliases: ["firewall","ids","ips","waf","perimeter","edge","cdn","ingress"], team: "NetSec", tier: "high", slo: 99.5, jurisdictions: ["GLOBAL"] },
+  { name: "email-gateway", aliases: ["mail relay","smtp","phishing filter","mimecast","email security","proofpoint"], team: "SecOps", tier: "standard", slo: 99.0, jurisdictions: ["GLOBAL"] },
+  { name: "internal-tooling", aliases: ["jenkins","ci","grafana","internal dashboard","soar","ticketing"], team: "SecOps", tier: "internal", slo: 99.0, jurisdictions: ["GLOBAL"] }
 ];
-const TYPE_ROUTING = { "security":"Security-IR","data-incident":"Compliance-Eng","deployment-failure":"DevEx","capacity":"SRE-Platform","dependency-failure":"SRE-Platform","configuration":"SRE-Platform","outage":"SRE-Platform","degradation":"SRE-Platform","other":"SRE-Platform","vulnerability-scan":"SecOps","malware":"SecOps","phishing":"SecOps","intrusion":"Security-IR","ddos":"Platform-SRE" };
+const TYPE_ROUTING = { "security":"Security-IR","data-incident":"Security-IR","vulnerability-scan":"SecOps","malware":"SecOps","phishing":"SecOps","intrusion":"Security-IR","ddos":"NetSec","outage":"SecOps","degradation":"SecOps","configuration":"SecOps","other":"SecOps" };
 // Cyber hybrid: types implying data exposure (-> confidential) / active compromise (-> severity floor).
 const SECURITY_SENSITIVE_TYPES = { "security":1,"data-incident":1,"intrusion":1,"malware":1,"phishing":1 };
 const SECURITY_FLOOR_TYPES = { "security":1,"data-incident":1,"intrusion":1,"malware":1 };

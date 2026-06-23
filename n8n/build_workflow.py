@@ -2,7 +2,9 @@
 """Builds the importable HINDSIGHT n8n workflow JSON.
 Written as a generator so the emitted JSON is always structurally valid.
 """
-import json, uuid
+import json, uuid, os
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
 
 def nid():  # n8n uses uuid-ish node ids
     return str(uuid.uuid4())
@@ -104,7 +106,7 @@ vision = node(
         "jsonBody": (
             '={\n'
             '  "contents": [{ "parts": [\n'
-            '    { "text": "Read this SRE dashboard screenshot. Return ONLY JSON: '
+            '    { "text": "Read this SIEM or vulnerability-scan chart screenshot. Return ONLY JSON: '
             '{image_kind, metric_name, unit, anomaly_observed, approx_peak_value, '
             'approx_baseline_value, time_window, one_line_summary}." },\n'
             '    { "inline_data": { "mime_type": "image/png",'
@@ -147,16 +149,15 @@ build_prompt = node(
     {
         "jsCode": (
             "const j = $input.first().json;\n"
-            "const prompt = `You are HINDSIGHT, an SRE postmortem analyst. Read the incident "
-            "document and return ONLY a valid JSON object matching this schema exactly:\\n"
-            "{incident_title, summary, severity (SEV1|SEV2|SEV3|SEV4), incident_type, status, "
+            "const prompt = `You are HINDSIGHT, a cybersecurity incident-log analyst. Read the SIEM export, vuln scan, or phishing report and return ONLY a valid JSON object matching this schema exactly:\\n"
+            "{incident_title, summary, severity (SEV1|SEV2|SEV3|SEV4), incident_type (security|data-incident|vulnerability-scan|malware|phishing|intrusion|ddos|other), status, "
             "affected_services[], affected_jurisdictions[], root_cause, trigger, detection_method, "
             "entities:{people[],teams[],systems[],dates[],error_codes[]}, "
-            "action_items:[{action,owner,priority}], contributing_factors[], sentiment, "
-            "blameless_quality, confidence_score, "
+            "action_items:[{action,owner,priority}], contributing_factors[], sentiment, blameless_quality, "
+            "cvss_score, cve_ids[], confidence_score, "
             "metrics:{detected_at,resolved_at,ttd_minutes,ttr_minutes,customer_impact}}\\n"
-            "When unsure of severity pick the LOWER one (a rubric re-scores it). Use null for unknowns.\\n\\n"
-            "VISION NOTES (from embedded dashboards):\\n${j.vision_notes || 'none'}\\n\\n"
+            "For vuln scans set cvss_score and cve_ids verbatim. When unsure of severity pick the LOWER one.\\n\\n"
+            "VISION NOTES (from embedded SIEM/scan charts):\\n${j.vision_notes || 'none'}\\n\\n"
             "DOCUMENT:\\n${j.extracted_text}`;\n"
             "return [{ json: { ...j, prompt } }];"
         ),
@@ -226,39 +227,32 @@ build_row = node(
     "Compose record + outputs", "n8n-nodes-base.code", 2, X[10], Y0,
     {
         "jsCode": (
-            "const g = $('Parse Gemini JSON').first().json;\n"
-            "const e = $input.first().json;\n"
-            "const services = (e.affected_services_resolved || []).join(', ');\n"
-            "const md = `# ${g.incident_title}\\n\\n"
-            "**Computed severity:** ${e.computed_severity}  (reported ${e.reported_severity})\\n"
-            "**Team:** ${e.department}    **Sensitivity:** ${e.sensitivity}\\n"
-            "**Services:** ${services}\\n"
-            "**Jurisdictions:** ${(e.affected_jurisdictions||[]).join(', ')}\\n\\n"
-            "## Summary\\n${g.summary}\\n\\n## Root cause\\n${g.root_cause || 'n/a'}\\n\\n"
-            "## Routing\\n${(e.routing_tags||[]).join(', ')}\\n`;\n"
-            "const row = {\n"
-            "  document_id: e.document_id,\n"
-            "  processed_at: e.processed_at,\n"
-            "  incident_title: g.incident_title,\n"
-            "  incident_type: g.incident_type,\n"
-            "  reported_severity: e.reported_severity,\n"
-            "  computed_severity: e.computed_severity,\n"
-            "  department: e.department,\n"
-            "  affected_services: services,\n"
-            "  affected_jurisdictions: (e.affected_jurisdictions||[]).join(', '),\n"
-            "  sensitivity: e.sensitivity,\n"
-            "  ttr_minutes: g.metrics?.ttr_minutes ?? '',\n"
-            "  status: g.status || 'resolved',\n"
-            "  recurrence_fingerprint: e.recurrence_fingerprint,\n"
-            "  routing_tags: (e.routing_tags||[]).join(', '),\n"
-            "  action_item_total: e.action_item_total ?? '',\n"
-            "  action_items_without_owner: e.action_items_without_owner ?? '',\n"
-            "  summary: (g.summary||'').slice(0,500),\n"
-            "  confidence_score: e.confidence_score ?? g.confidence_score ?? ''\n"
-            "};\n"
-            "const isSev1 = e.computed_severity === 'SEV1';\n"
-            "return [{ json: { row, markdown: md, is_sev1: isSev1, e, g,\n"
-            "  out_path: `/data/output_docs/${e.document_id}.md` } }];"
+            "function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}\n"
+            "function actionsCsv(a){if(!a||!a.length)return'';return a.map(x=>{const o=(x&&x.owner&&String(x.owner).trim())?String(x.owner):'UNOWNED';const p=(x&&x.priority)?String(x.priority):'-';return p+': '+String(x.action||'')+' ('+o+')';}).join('; ');}\n"
+            "function fileType(n){const m=String(n||'').match(/\\.([^.]+)$/);return m?m[1].toLowerCase():'txt';}\n"
+            "const g=$('Parse Gemini JSON').first().json;\n"
+            "const e=$input.first().json;\n"
+            "const classification=String(e.incident_type||g.incident_type||'other');\n"
+            "const filename=String(e.source_filename||g.filename||g.source_filename||'unknown');\n"
+            "const sentiment=String(g.sentiment||'neutral');\n"
+            "const routingTag=String(e.routing_tag||'auto-approved');\n"
+            "const summary=String(g.summary||'').slice(0,500);\n"
+            "const actionItems=actionsCsv(g.action_items||[]);\n"
+            "const row={document_id:e.document_id,filename:filename,file_type:fileType(filename),processed_at:e.processed_at,"
+            "classification:classification,department:e.department,sentiment:sentiment,confidence_score:e.confidence_score,"
+            "summary:summary,routing_tag:routingTag,sensitivity:e.sensitivity,action_items:actionItems,"
+            "cvss_score:e.cvss_score,cve_ids:(e.cve_ids||[]).join(', ')};\n"
+            "const emailHtml='<h2>Document Processed</h2><p><b>File:</b> '+esc(filename)+'</p>"
+            "+'<p><b>Classification:</b> '+esc(classification)+'</p><p><b>Sentiment:</b> '+esc(sentiment)+'</p>"
+            "+'<p><b>Department:</b> '+esc(e.department)+'</p><p><b>Sensitivity:</b> '+esc(e.sensitivity)+'</p>"
+            "+'<p><b>Routing tag:</b> '+esc(routingTag)+'</p><h3>Summary</h3><p>'+esc(summary)+'</p>"
+            "+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>';"
+            "const subjDigest='['+classification+'] New document processed: '+filename;\n"
+            "const subjSev1='[CONFIDENTIAL ESCALATE] '+filename+' - '+e.department;\n"
+            "const isSev1=e.computed_severity==='SEV1';\n"
+            "return [{json:{row,markdown:'# '+e.computed_severity+' - '+classification,is_sev1:isSev1,e,g,"
+            "emailSubjectDigest:subjDigest,emailHtmlDigest:emailHtml,emailSubjectSev1:subjSev1,emailHtmlSev1:emailHtml,"
+            "out_path:`/data/output_docs/${e.document_id}.md`}}];"
         ),
     },
 )
@@ -328,19 +322,10 @@ page = node(
     "🚨 Page on-call (SEV1)", "n8n-nodes-base.gmail", 2, X[12] + 260, Y0 - 110,
     {
         "operation": "send",
-        "sendTo": "=oncall@example.com",
-        "subject": "=🚨 SEV1 PAGE — {{ $json.g.incident_title }} ({{ $json.e.department }})",
+        "sendTo": "=reem.mor3@gmail.com",
+        "subject": "={{ $('Compose record + outputs').first().json.emailSubjectSev1 }}",
         "emailType": "html",
-        "message": (
-            "=<h2 style='color:#FF4D5E'>SEV1 incident filed</h2>"
-            "<p><b>{{ $json.g.incident_title }}</b></p>"
-            "<p>Team: {{ $json.e.department }} · Services: "
-            "{{ ($json.e.affected_services_resolved||[]).join(', ') }}</p>"
-            "<p>Jurisdictions: {{ ($json.e.affected_jurisdictions||[]).join(', ') }}</p>"
-            "<p>{{ $json.g.summary }}</p>"
-            "<p>Routing: {{ ($json.e.routing_tags||[]).join(', ') }}</p>"
-            "<hr><i>HINDSIGHT · auto-paged because computed severity = SEV1</i>"
-        ),
+        "message": "={{ $('Compose record + outputs').first().json.emailHtmlSev1 }}",
         "options": {"priority": "high"},
     },
 )
@@ -350,17 +335,10 @@ summary_mail = node(
     "📧 Send digest", "n8n-nodes-base.gmail", 2, X[12] + 260, Y0 + 110,
     {
         "operation": "send",
-        "sendTo": "=reliability@example.com",
-        "subject": "=[{{ $json.e.computed_severity }}] {{ $json.g.incident_title }}",
+        "sendTo": "=reem.mor3@gmail.com",
+        "subject": "={{ $('Compose record + outputs').first().json.emailSubjectDigest }}",
         "emailType": "html",
-        "message": (
-            "=<h2>Postmortem processed</h2>"
-            "<p><b>{{ $json.g.incident_title }}</b> — {{ $json.e.computed_severity }}</p>"
-            "<p>Team: {{ $json.e.department }} · Sensitivity: {{ $json.e.sensitivity }}</p>"
-            "<p>{{ $json.g.summary }}</p>"
-            "<p>Routing: {{ ($json.e.routing_tags||[]).join(', ') }}</p>"
-            "<hr><i>HINDSIGHT · n8n + Gemini 3</i>"
-        ),
+        "message": "={{ $('Compose record + outputs').first().json.emailHtmlDigest }}",
         "options": {},
     },
 )
@@ -407,10 +385,9 @@ for link in links:
     main[out_idx].append({"node": dst, "type": "main", "index": 0})
 
 stickies = [
-    sticky("## HINDSIGHT — postmortem intelligence pipeline\n"
-           "Drop a postmortem (.pdf/.docx/.md) into **/data/incoming_docs**.\n"
-           "Gemini extracts an SRE schema → FastAPI re-scores severity, routes to the owning "
-           "team, computes error-budget burn & a recurrence fingerprint → Sheets + Gmail.",
+    sticky("## HINDSIGHT — cyber incident log pipeline\n"
+           "Drop a SIEM export, vuln scan, or phishing report (.pdf/.md) into **/data/incoming_docs**.\n"
+           "Gemini extracts → FastAPI re-scores severity & routes → Sheets + Gmail.",
            X[0] - 20, Y0 - 230, 540, 180, 4),
     sticky("### Multimodal branch\nIf the doc embeds a Grafana/dashboard image, Gemini Vision "
            "reads the chart and the notes are folded into the main extraction. "
@@ -426,7 +403,7 @@ stickies = [
 nodes.extend(stickies)
 
 workflow = {
-    "name": "HINDSIGHT — Postmortem Intelligence",
+    "name": "HINDSIGHT — Cyber Incident Intelligence",
     "nodes": nodes,
     "connections": connections,
     "active": False,
@@ -436,7 +413,7 @@ workflow = {
     "meta": {"templateid": "hindsight-postmortem-intelligence"},
 }
 
-with open("/home/claude/hindsight/n8n/hindsight_workflow.json", "w") as f:
+with open(os.path.join(ROOT, "hindsight_workflow.json"), "w") as f:
     json.dump(workflow, f, indent=2)
 
 print("nodes:", len([n for n in nodes if n['type'] != 'n8n-nodes-base.stickyNote']))

@@ -6,13 +6,23 @@ import json
 import os
 import sys
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 
-from verify_n8n_cloud import api_get, load_dotenv, WORKFLOW_ID
+from n8n_cloud_api import api_get, load_dotenv, WORKFLOW_ID, SHEET_ID_DEFAULT
 
 GEMINI_NODE = "Gemini — Extract Incident"
 SHEETS_NODE = "Append to Registry"
 PAGE_NODE = "Page On-Call (SEV1)"
 DIGEST_NODE = "Postmortem Filed"
+REQUIRED_NODE_NAMES = {
+    "Prepare Document",
+    GEMINI_NODE,
+    "Parse Gemini JSON",
+    "HINDSIGHT Enrich",
+    "Compose Outputs",
+    SHEETS_NODE,
+    "Is SEV1?",
+}
 
 
 def main() -> int:
@@ -24,7 +34,15 @@ def main() -> int:
         print("NEEDS_REVIEW: N8N_API_KEY not in .env — add from n8n Settings → API")
         return 1
 
-    wf = api_get(base, key, f"/api/v1/workflows/{WORKFLOW_ID}")
+    try:
+        wf = api_get(base, key, f"/api/v1/workflows/{WORKFLOW_ID}")
+    except HTTPError as exc:
+        print(f"FAIL: n8n API HTTP {exc.code}")
+        return 1
+    except URLError as exc:
+        print(f"FAIL: network error — {exc.reason}")
+        return 1
+
     nodes = {n["name"]: n for n in wf.get("nodes", [])}
 
     report = {
@@ -39,6 +57,12 @@ def main() -> int:
         report["checks"].append({"status": status, "item": item, "detail": detail})
         mark = "OK" if status == "ok" else "NEEDS_REVIEW" if status == "review" else "FAIL"
         print(f"[{mark}] {item}" + (f" — {detail}" if detail else ""))
+
+    missing = REQUIRED_NODE_NAMES - set(nodes)
+    if missing:
+        add("fail", "Required nodes", f"missing: {sorted(missing)}")
+    else:
+        add("ok", "Required nodes", str(len(REQUIRED_NODE_NAMES)))
 
     add("ok", "Workflow reachable via API", wf.get("name", ""))
     add("ok" if wf.get("active") else "review", "Workflow active", str(wf.get("active")))
@@ -77,7 +101,27 @@ def main() -> int:
         add("ok", "Google Sheets credential bound", json.dumps(sheets_creds))
     else:
         add("review", "Google Sheets credential bound", "OAuth2 required")
-    add("review", "Sheets document/tab", json.dumps(doc) if isinstance(doc, dict) else str(doc))
+    doc_val = doc.get("value", "") if isinstance(doc, dict) else str(doc)
+    if doc_val:
+        add("ok", "Sheets spreadsheet ID", doc_val)
+    else:
+        add("review", "Sheets spreadsheet ID", f"empty — run setup with {SHEET_ID_DEFAULT}")
+
+    sheet_name = sheets_p.get("sheetName", {})
+    tab = sheet_name.get("value", "Incidents") if isinstance(sheet_name, dict) else "Incidents"
+    add("review", "Sheets tab name (verify in Google UI)", f"'{tab}' — must exist; run scripts/bootstrap_incidents_tab.py if missing")
+
+    opts = sheets_p.get("options") or {}
+    handling = opts.get("handlingExtraData", "unknown")
+    if handling == "ignoreIt":
+        add("ok", "Sheets handling extra fields", "ignoreIt")
+    else:
+        add("review", "Sheets handling extra fields", f"{handling} — set to ignoreIt (sync_n8n_cloud_nodes.py)")
+
+    if nodes.get("Flatten for Sheets"):
+        add("ok", "Flatten for Sheets node", "present — Sheets gets 14 columns only")
+    else:
+        add("review", "Flatten for Sheets node", "missing — run sync_n8n_cloud_nodes.py")
 
     for label, node_name in [(PAGE_NODE, PAGE_NODE), (DIGEST_NODE, DIGEST_NODE)]:
         n = nodes.get(node_name, {})

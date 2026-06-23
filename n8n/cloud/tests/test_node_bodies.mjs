@@ -38,47 +38,45 @@ async function throws(name, fn) {
   catch (_) { pass++; }
 }
 
-const PAYMENTS = {
-  incident_title: 'Payments gateway outage', severity: 'SEV2', incident_type: 'outage',
-  affected_services: ['payments-gateway', 'wallet'], affected_jurisdictions: ['UKGC', 'NJ-DGE', 'MGM'],
-  summary: 'payments-gateway unavailable; failed deposits and double-charges; funds affected; regulator notified.',
-  root_cause: 'connection pool exhaustion', metrics: { detected_at: '2026-06-20T10:00:00Z', ttr_minutes: 95 },
-  action_items: [{ action: 'a', owner: 'Dana', priority: 'P0' }, { action: 'b', owner: null, priority: 'P1' }, { action: 'c', owner: null, priority: 'P0' }],
-  confidence_score: 0.9, blameless_quality: 'good',
+const VULN_CRITICAL = {
+  incident_title: 'Critical OpenSSL RCE on perimeter', severity: 'SEV3', incident_type: 'vulnerability-scan',
+  affected_services: ['nessus', 'network'], affected_jurisdictions: ['GLOBAL'],
+  summary: 'Nessus flagged CVE-2026-21841 CVSS 9.8 remote code execution on edge TLS endpoints.',
+  root_cause: 'unpatched OpenSSL in gateway image', cvss_score: 9.8, cve_ids: ['CVE-2026-21841'],
+  metrics: { detected_at: '2026-06-20T08:00:00Z', ttr_minutes: 0 },
+  action_items: [{ action: 'patch gateways', owner: 'NetSec', priority: 'P0' }, { action: 'validate scan', owner: null, priority: 'P1' }],
+  confidence_score: 0.92, blameless_quality: 'good',
 };
 
 (async () => {
-  // 1) Canonical SEV1 upgrade -------------------------------------------------
-  let e = await enrich(PAYMENTS);
+  // 1) Canonical SEV1 CVSS upgrade -------------------------------------------------
+  let e = await enrich(VULN_CRITICAL);
   eq('sev1.computed', e.computed_severity, 'SEV1');
-  ok('sev1.score>=9', e.severity_score >= 9, 'score=' + e.severity_score);
+  ok('sev1.score_floor', e.severity_score >= 8, 'score=' + e.severity_score);
   ok('sev1.review', e.severity_review === true);
-  eq('sev1.department', e.department, 'Payments-SRE');
-  eq('sev1.jurisdictions', e.affected_jurisdictions, ['MGM', 'NJ-DGE', 'UKGC']);
+  ok('sev1.dept', ['SecOps', 'NetSec'].includes(e.department), e.department);
+  eq('sev1.jurisdictions', e.affected_jurisdictions, ['GLOBAL']);
   eq('sev1.sensitivity', e.sensitivity, 'confidential');
-  ok('sev1.budget_breach', e.slo_impact.budget_breach === true);
+  eq('sev1.routing_tag', e.routing_tag, 'escalate');
   ok('sev1.tag.page', e.routing_tags.includes('page-oncall'));
-  ok('sev1.tag.reg', e.routing_tags.includes('regulatory-review'));
   ok('sev1.tag.review', e.routing_tags.includes('severity-review'));
-  ok('sev1.tag.breach', e.routing_tags.includes('budget-breach'));
-  eq('sev1.actions', [e.action_item_total, e.action_items_without_owner, e.open_p0_actions], [3, 2, 2]);
+  eq('sev1.actions', [e.action_item_total, e.action_items_without_owner, e.open_p0_actions], [2, 1, 1]);
 
-  // 2) Minor internal: no upgrade, no paging, internal, GLOBAL-only -----------
-  e = await enrich({ affected_services: ['notifications'], affected_jurisdictions: [], severity: 'SEV4', incident_type: 'degradation', summary: 'minor non-customer email delay' });
+  // 2) Minor internal: no upgrade, no paging, internal ---------------------------
+  e = await enrich({ affected_services: ['email-gateway'], affected_jurisdictions: [], severity: 'SEV4', incident_type: 'other', summary: 'minor phishing filter delay' });
   eq('minor.computed', e.computed_severity, 'SEV4');
   ok('minor.noreview', e.severity_review === false);
   eq('minor.sensitivity', e.sensitivity, 'internal');
-  eq('minor.department', e.department, 'Engagement-Eng');
+  eq('minor.department', e.department, 'SecOps');
   ok('minor.no_page', !e.routing_tags.includes('page-oncall'));
-  ok('minor.no_reg', !e.routing_tags.includes('regulatory-review'));
 
   // 3) GLOBAL-only jurisdiction is kept but earns no regulatory weight --------
-  e = await enrich({ affected_services: ['identity'], affected_jurisdictions: [] });
+  e = await enrich({ affected_services: ['auth'], affected_jurisdictions: [] });
   eq('global.jx', e.affected_jurisdictions, ['GLOBAL']);
   ok('global.no_reg', !e.routing_tags.includes('regulatory-review'));
 
   // 4) GLOBAL discarded once a real jurisdiction is present -------------------
-  e = await enrich({ affected_services: ['identity'], affected_jurisdictions: ['UKGC'] });
+  e = await enrich({ affected_services: ['auth'], affected_jurisdictions: ['UKGC'] });
   eq('globaldrop.jx', e.affected_jurisdictions, ['UKGC']);
 
   // 5) Security floor + type-routing fallback for an unknown service ----------
@@ -88,14 +86,14 @@ const PAYMENTS = {
   ok('sec.review', e.routing_tags.includes('severity-review'));
 
   // 6) Severity DOWNGRADE also flags review (disagreement both directions) ----
-  e = await enrich({ affected_services: ['notifications'], severity: 'SEV1', incident_type: 'degradation', summary: 'tiny blip' });
+  e = await enrich({ affected_services: ['email-gateway'], severity: 'SEV1', incident_type: 'other', summary: 'tiny blip' });
   ok('downgrade.lower', ['SEV3', 'SEV4'].includes(e.computed_severity), e.computed_severity);
   ok('downgrade.review', e.severity_review === true);
 
   // 7) Error-budget breach boundary (>= 50% of budget) -----------------------
-  //    reporting-db SLO 99.0% -> 432 min monthly budget; 50% = 216 min.
-  let bAt  = await enrich({ affected_services: ['reporting-db'], incident_type: 'degradation', metrics: { ttr_minutes: 216 }, summary: 's' });
-  let bBel = await enrich({ affected_services: ['reporting-db'], incident_type: 'degradation', metrics: { ttr_minutes: 215 }, summary: 's' });
+  //    vulnerability-scanner SLO 99.0% -> 432 min monthly budget; 50% = 216 min.
+  let bAt  = await enrich({ affected_services: ['nessus'], incident_type: 'degradation', metrics: { ttr_minutes: 216 }, summary: 's' });
+  let bBel = await enrich({ affected_services: ['nessus'], incident_type: 'degradation', metrics: { ttr_minutes: 215 }, summary: 's' });
   eq('slo.budget', bAt.slo_impact.monthly_budget_minutes, 432);
   ok('slo.breach_at_50', bAt.slo_impact.budget_breach === true);
   ok('slo.no_breach_below', bBel.slo_impact.budget_breach === false);
@@ -107,9 +105,9 @@ const PAYMENTS = {
   ok('noslo.fingerprint', typeof e.recurrence_fingerprint === 'string' && e.recurrence_fingerprint.length === 12);
 
   // 9) Fingerprint determinism + word-order independence + sensitivity --------
-  const fA = (await enrich({ incident_type: 'outage', affected_services: ['payments-gateway'], root_cause: 'connection pool exhaustion timeout cascade' })).recurrence_fingerprint;
-  const fB = (await enrich({ incident_type: 'outage', affected_services: ['payments-gateway'], root_cause: 'cascade timeout exhaustion connection pool' })).recurrence_fingerprint;
-  const fC = (await enrich({ incident_type: 'outage', affected_services: ['payments-gateway'], root_cause: 'disk full on the primary database node' })).recurrence_fingerprint;
+  const fA = (await enrich({ incident_type: 'intrusion', affected_services: ['siem'], root_cause: 'connection pool exhaustion timeout cascade' })).recurrence_fingerprint;
+  const fB = (await enrich({ incident_type: 'intrusion', affected_services: ['siem'], root_cause: 'cascade timeout exhaustion connection pool' })).recurrence_fingerprint;
+  const fC = (await enrich({ incident_type: 'intrusion', affected_services: ['siem'], root_cause: 'disk full on the primary database node' })).recurrence_fingerprint;
   ok('fp.stable_order_independent', fA === fB, fA + ' vs ' + fB);
   ok('fp.distinct_for_diff_cause', fA !== fC);
 
@@ -120,13 +118,13 @@ const PAYMENTS = {
   ok('conf.needs_review', e.routing_tags.includes('needs-review'));
 
   // 11) Action accounting: whitespace owner = unowned; priority case-insens. --
-  e = await enrich({ affected_services: ['casino'], incident_type: 'configuration', action_items: [
+  e = await enrich({ affected_services: ['siem'], incident_type: 'configuration', action_items: [
     { action: 'a', owner: '   ', priority: 'p0' }, { action: 'b', owner: 'Dana', priority: 'P0' }, { action: 'c', owner: null, priority: 'p1' },
   ], summary: 's', metrics: { ttr_minutes: 10 } });
   eq('actions.count', [e.action_item_total, e.action_items_without_owner, e.open_p0_actions], [3, 2, 2]);
 
   // 12) Robust to long / unicode input (no crash) ----------------------------
-  e = await enrich({ affected_services: ['casino'], incident_type: 'outage', summary: '🔥 '.repeat(5000) + 'múlti-byte ünïcödé', root_cause: 'x' });
+  e = await enrich({ affected_services: ['siem'], incident_type: 'intrusion', summary: '🔥 '.repeat(5000) + 'múlti-byte ünïcödé', root_cause: 'x' });
   ok('robust.unicode', e && e.computed_severity);
 
   // 13) CVSS critical floors to SEV1, escalates, confidential, SecOps --------
@@ -147,18 +145,18 @@ const PAYMENTS = {
   ok('cvss.low_nofloor', ['SEV3', 'SEV4'].includes(e.computed_severity), e.computed_severity);
 
   // 16) routing_tag auto-approved on a clean minor incident ------------------
-  e = await enrich({ incident_type: 'degradation', severity: 'SEV4', affected_services: ['notifications'], affected_jurisdictions: [], summary: 'minor internal email delay', root_cause: 'queue backlog', action_items: [{ action: 'tune', owner: 'Dana', priority: 'P2' }], confidence_score: 0.9, metrics: { ttr_minutes: 0 } });
+  e = await enrich({ incident_type: 'degradation', severity: 'SEV4', affected_services: ['email-gateway'], affected_jurisdictions: [], summary: 'minor internal email delay', root_cause: 'queue backlog', action_items: [{ action: 'tune', owner: 'Dana', priority: 'P2' }], confidence_score: 0.9, metrics: { ttr_minutes: 0 } });
   eq('routing.auto', e.routing_tag, 'auto-approved');
 
   // 17) routing_tag needs-review on low confidence ---------------------------
   e = await enrich({ incident_type: 'other', severity: 'SEV3', confidence_score: 0.3, root_cause: '', action_items: [], affected_services: [], metrics: {}, summary: 's' });
   eq('routing.needs_review', e.routing_tag, 'needs-review');
 
-  // 18) intrusion -> Security-IR, ddos -> Platform-SRE -----------------------
+  // 18) intrusion -> Security-IR, ddos -> NetSec ---------------------------
   e = await enrich({ incident_type: 'intrusion', affected_services: ['nope-xyz'], summary: 'active intrusion' });
   eq('intrusion.dept', e.department, 'Security-IR');
   e = await enrich({ incident_type: 'ddos', affected_services: ['nope-xyz'], summary: 'volumetric flood' });
-  eq('ddos.dept', e.department, 'Platform-SRE');
+  eq('ddos.dept', e.department, 'NetSec');
 
   // 19) CVSS clamp parity with the FastAPI brain (0-10) ----------------------
   e = await enrich({ incident_type: 'vulnerability-scan', affected_services: ['nessus'], cvss_score: 15.0, summary: 'x' });

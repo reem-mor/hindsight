@@ -6,9 +6,9 @@ const submitForm = trigger({
   config: {
     name: 'Submit a Postmortem',
     parameters: {
-      formTitle: 'HINDSIGHT — Postmortem Intake',
-      formDescription: 'Upload an incident postmortem (.pdf, .md, or .txt). HINDSIGHT extracts it with Gemini, independently re-scores severity, routes it to the owning team, estimates SLO error-budget burn, and files it to the incident registry.',
-      formFields: { values: [ { fieldLabel: 'Postmortem Document', fieldType: 'file', acceptFileTypes: '.pdf,.md,.txt,.markdown', multipleFiles: false, requiredField: true } ] },
+      formTitle: 'HINDSIGHT — Cyber Incident Intake',
+      formDescription: 'Upload a cyber incident log (.pdf, .md, or .txt): SIEM export, vulnerability scan, phishing report, or intrusion writeup. HINDSIGHT extracts with Gemini, re-scores severity, routes to SecOps, and files to the registry.',
+      formFields: { values: [ { fieldLabel: 'Incident Log', fieldType: 'file', acceptFileTypes: '.pdf,.md,.txt,.markdown', multipleFiles: false, requiredField: true } ] },
       responseMode: 'onReceived',
       options: { appendAttribution: false, respondWithOptions: { values: { respondWith: 'text', formSubmittedText: 'Received — HINDSIGHT is analyzing your postmortem. The registry and your inbox will update momentarily.' } } }
     },
@@ -620,7 +620,7 @@ const appendRegistry = node({
     parameters: {
       resource: 'sheet',
       operation: 'append',
-      documentId: { __rl: true, mode: 'id', value: '', cachedResultName: 'PASTE your HINDSIGHT registry spreadsheet ID here' },
+      documentId: { __rl: true, mode: 'id', value: '1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk', cachedResultName: 'HINDSIGHT Incident Registry' },
       sheetName: { __rl: true, mode: 'name', value: 'Incidents' },
       columns: { mappingMode: 'autoMapInputData', value: {} },
       options: { handlingExtraData: 'ignoreIt', useAppend: true }

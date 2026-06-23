@@ -19,44 +19,45 @@ def _clean_recurrence():
 
 
 @pytest.fixture()
-def sev1_payment_payload():
-    """A clear SEV1: payments down, two jurisdictions, monetary impact."""
+def sev1_vuln_payload():
+    """Critical vuln scan finding — CVSS 9.8 floors to SEV1."""
     return {
-        "incident_title": "Payments gateway full outage — UK & NJ",
+        "incident_title": "Critical OpenSSL RCE on perimeter hosts",
         "summary": (
-            "Complete outage of the payment gateway prevented all deposits and "
-            "withdrawals for 95 minutes. Revenue impact and customer funds were "
-            "affected across UKGC and NJ-DGE jurisdictions."
+            "Nessus scan flagged CVE-2026-21841 with CVSS 9.8 on 23 hosts. "
+            "Remote code execution possible without authentication on edge TLS endpoints."
         ),
-        "severity": "SEV2",
-        "incident_type": "outage",
-        "status": "resolved",
-        "affected_services": ["payment gateway", "wallet-svc"],
-        "affected_jurisdictions": ["UKGC", "NJ-DGE"],
-        "root_cause": "Connection pool exhaustion in the payments PSP adapter after a config change.",
-        "trigger": "Deploy of release 2024.11.3 reduced pool size.",
+        "severity": "SEV3",
+        "incident_type": "vulnerability-scan",
+        "status": "monitoring",
+        "affected_services": ["nessus", "network"],
+        "affected_jurisdictions": ["GLOBAL"],
+        "root_cause": "Unpatched OpenSSL library in the perimeter gateway image.",
+        "trigger": "Scheduled vulnerability scan",
         "detection_method": "alert",
         "entities": {
-            "people": ["A. Cohen"],
-            "teams": ["Payments-SRE"],
-            "systems": ["payments-gateway", "wallet"],
-            "dates": ["2024-11-19"],
-            "error_codes": ["POOL_TIMEOUT"],
+            "people": ["SecOps on-call"],
+            "teams": ["SecOps"],
+            "systems": ["vulnerability-scanner", "network"],
+            "dates": ["2026-06-20"],
+            "error_codes": [],
         },
         "action_items": [
-            {"action": "Add pool-size guardrail to deploy checklist", "owner": "A. Cohen", "priority": "P0"},
-            {"action": "Add saturation alert on PSP pool", "owner": None, "priority": "P1"},
+            {"action": "Emergency patch perimeter gateways", "owner": "NetSec", "priority": "P0"},
+            {"action": "Validate scanner coverage", "owner": None, "priority": "P1"},
         ],
-        "contributing_factors": ["No pre-deploy load test"],
-        "sentiment": "neutral",
+        "contributing_factors": ["Delayed image rebuild pipeline"],
+        "sentiment": "negative",
         "blameless_quality": "good",
-        "confidence_score": 0.9,
-        "filename": "pm-payments-2024-11-19.pdf",
+        "cvss_score": 9.8,
+        "cve_ids": ["CVE-2026-21841"],
+        "confidence_score": 0.92,
+        "filename": "vuln_scan_critical_openssl.md",
         "metrics": {
-            "detected_at": "2024-11-19T09:05:00Z",
-            "resolved_at": "2024-11-19T10:40:00Z",
-            "ttd_minutes": 5,
-            "ttr_minutes": 95,
-            "customer_impact": "All deposits/withdrawals failed",
+            "detected_at": "2026-06-20T08:00:00Z",
+            "resolved_at": None,
+            "ttd_minutes": 0,
+            "ttr_minutes": 0,
+            "customer_impact": "Potential remote compromise of edge TLS",
         },
     }
