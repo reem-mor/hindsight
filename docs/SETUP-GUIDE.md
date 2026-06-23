@@ -25,6 +25,11 @@ must configure yourself** before a live end-to-end run (real Gemini call → She
 
 ## 2. Live audit results (your n8n Cloud — today)
 
+See also: [WHY-NOT-GOOGLE-MCP.md](WHY-NOT-GOOGLE-MCP.md) — why Sheets/Gmail/Gemini are not copied from amdocs files.
+
+**Registry spreadsheet created via n8n API:** `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk`  
+([open in Google Sheets](https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit))
+
 Run anytime: `.\.venv\Scripts\python.exe scripts\audit_n8n_cloud.py`
 
 | Check | Status | Detail |
@@ -36,7 +41,7 @@ Run anytime: `.\.venv\Scripts\python.exe scripts\audit_n8n_cloud.py`
 | Gmail OAuth | ✅ | `Gmail Amdocs course API` → **To:** `reem.mor3@gmail.com` |
 | Pinned dry-runs | ✅ | Executions `481`, `483` = `success` |
 | **Workflow active** | ⚠️ **YOU** | `active: false` (still draft) |
-| **Spreadsheet ID** | ⚠️ **YOU** | **Empty** — node still says “PASTE your HINDSIGHT registry spreadsheet ID here” |
+| **Spreadsheet ID** | ⚠️ **YOU** | Created: `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk` — paste into **Append to Registry** if empty |
 | **Gemini model** | ⚠️ **YOU** | URL uses `gemini-3-flash` — use `gemini-3-flash-preview` if API returns 404 |
 | Playwright UI login | ⚠️ **YOU** | Browser automation hits sign-in (no session cookie) — use your logged-in browser for canvas screenshots |
 

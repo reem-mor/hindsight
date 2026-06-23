@@ -1,0 +1,4 @@
+spreadsheet_id=1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk
+url=https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit
+tab=Incidents
+created_via=n8n bootstrap webhook (setup_n8n_hindsight.py)

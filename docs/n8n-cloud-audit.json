@@ -97,7 +97,7 @@
     {
       "status": "ok",
       "item": "Recent executions",
-      "detail": "483=success, 481=success"
+      "detail": "495=error, 483=success, 481=success"
     }
   ]
 }
