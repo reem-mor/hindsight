@@ -65,9 +65,9 @@
       "detail": "retryOnFail 5\u00d7 / 3000ms"
     },
     {
-      "status": "review",
+      "status": "ok",
       "item": "Gemini model string",
-      "detail": "gemini-3-flash \u2014 try gemini-3-flash-preview if 404"
+      "detail": "gemini-3-flash-preview"
     },
     {
       "status": "ok",
@@ -122,7 +122,7 @@
     {
       "status": "ok",
       "item": "Recent executions",
-      "detail": "524=success, 523=success, 522=error"
+      "detail": "536=success, 535=success, 524=success"
     }
   ]
 }

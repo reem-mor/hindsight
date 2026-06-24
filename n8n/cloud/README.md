@@ -27,10 +27,13 @@ python scripts/sync_n8n_cloud_nodes.py
 
 `workflow.ts` is the Workflow-SDK reference; live bodies are synced from `nodes/*.js`.
 
+**BON-6 note:** `nodes/compare_models.js` is tested in `test_bonus_nodes.mjs` but is **not** part of the main Cloud grading workflow. Use `POST /compare` on the enrichment API instead.
+
 ## Tests
 
 ```bash
-node tests/test_node_bodies.mjs   # 58 checks, no n8n required
+node tests/test_node_bodies.mjs   # enrich + parse guardrails
+node tests/test_prepare.mjs        # prepare.js upload guards
 ```
 
 ## Sheet columns (assignment §7.2)

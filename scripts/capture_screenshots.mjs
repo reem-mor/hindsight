@@ -93,6 +93,11 @@ async function main() {
       2500,
     );
     await shot(page, join(DOCS, "screenshot-fastapi.png"), "http://127.0.0.1:8000/docs", 1500);
+    try {
+      await shot(page, join(DOCS, "screenshot-n8n-local.png"), "http://127.0.0.1:5678/", 2000);
+    } catch (e) {
+      console.warn("n8n local screenshot skipped (is docker compose up?):", e.message);
+    }
   } finally {
     dash.server.close();
     if (apiProc) apiProc.kill();

@@ -16,6 +16,7 @@ venv/
 
 # n8n / runtime data
 n8n_data/
+n8n/_import_workflow.json
 incoming_docs/*
 output_docs/*
 tmp_images/*
@@ -36,3 +37,11 @@ samples/*.pdf
 
 # Script tooling
 scripts/node_modules/
+
+# Claude Code local state
+.claude/worktrees/
+.claude/settings.local.json
+
+# Tooling scratch
+.playwright-mcp/
+batch_submit_resp*.txt

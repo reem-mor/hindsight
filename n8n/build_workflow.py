@@ -5,6 +5,9 @@ Written as a generator so the emitted JSON is always structurally valid.
 import json, uuid, os
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+GEMINI_GENERATE_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent"
+)
 
 def nid():  # n8n uses uuid-ish node ids
     return str(uuid.uuid4())
@@ -95,7 +98,7 @@ vision = node(
     "👁 Gemini Vision — read chart", "n8n-nodes-base.httpRequest", 4.2, X[4], Y0 - 130,
     {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent",
+        "url": GEMINI_GENERATE_URL,
         "sendHeaders": True,
         "headerParameters": {"parameters": [
             {"name": "Content-Type", "value": "application/json"},
@@ -168,7 +171,7 @@ gemini = node(
     "🧠 Gemini — extract incident", "n8n-nodes-base.httpRequest", 4.2, X[7], Y0,
     {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent",
+        "url": GEMINI_GENERATE_URL,
         "sendHeaders": True,
         "headerParameters": {"parameters": [
             {"name": "Content-Type", "value": "application/json"},
@@ -265,7 +268,7 @@ build_row = node(
             "+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>';"
             "const subjDigest='['+classification+'] New document processed: '+filename;\n"
             "const subjSev1='[CONFIDENTIAL ESCALATE] '+filename+' - '+e.department;\n"
-            "const isSev1=e.computed_severity==='SEV1';\n"
+            "const isSev1=e.computed_severity==='SEV1'||String(e.sensitivity)==='confidential'||routingTag==='escalate';\n"
             "return [{json:{row,markdown:'# '+e.computed_severity+' - '+classification,is_sev1:isSev1,e,g,"
             "emailSubjectDigest:subjDigest,emailHtmlDigest:emailHtml,emailSubjectSev1:subjSev1,emailHtmlSev1:emailHtml,"
             "out_path:`/data/output_docs/${e.document_id}.md`}}];"
@@ -287,7 +290,9 @@ sheets = node(
         "options": {},
     },
 )
-sheets["credentials"] = {"googleSheetsOAuth2Api": {"id": "REPLACE_SHEETS", "name": "Google Sheets"}}
+sheets["credentials"] = {
+    "googleSheetsOAuth2Api": {"id": "REPLACE_SHEETS", "name": "Google Sheets Amdocs Course API"}
+}
 # feed the flat row to sheets
 prep_sheet = node(
     "Flatten row", "n8n-nodes-base.code", 2, X[10] + 130, Y0 + 150,
@@ -345,7 +350,7 @@ page = node(
         "options": {"priority": "high"},
     },
 )
-page["credentials"] = {"gmailOAuth2": {"id": "REPLACE_GMAIL", "name": "Gmail"}}
+page["credentials"] = {"gmailOAuth2": {"id": "REPLACE_GMAIL", "name": "Gmail Amdocs course API"}}
 
 summary_mail = node(
     "📧 Send digest", "n8n-nodes-base.gmail", 2, X[12] + 260, Y0 + 110,
@@ -358,7 +363,7 @@ summary_mail = node(
         "options": {},
     },
 )
-summary_mail["credentials"] = {"gmailOAuth2": {"id": "REPLACE_GMAIL", "name": "Gmail"}}
+summary_mail["credentials"] = {"gmailOAuth2": {"id": "REPLACE_GMAIL", "name": "Gmail Amdocs course API"}}
 
 nodes = [trigger, extract, parse_extract, has_images, vision, merge_vision,
          build_prompt, gemini, parse_gemini, enrich, build_row, prep_sheet,
@@ -419,6 +424,7 @@ stickies = [
 nodes.extend(stickies)
 
 workflow = {
+    "id": "2401581a-0001-4000-8000-hindsight001",
     "name": "HINDSIGHT — Cyber Incident Intelligence",
     "nodes": nodes,
     "connections": connections,

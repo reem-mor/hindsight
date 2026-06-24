@@ -22,7 +22,7 @@ Legend: ✅ automated test · 📸 screenshot · ⚙️ workflow config · ✋ l
 | ID | Step | File / node | Evidence | Status |
 |---|---|---|---|---|
 | REQ-P1 | File detection | Form trigger; `localFileTrigger` | SETUP-GUIDE | ✅ |
-| REQ-P2 | Text + image extraction | [prepare.js](../n8n/cloud/nodes/prepare.js); [extract_document.py](../extractors/extract_document.py) | `tests/test_extractor.py` | ✅ |
+| REQ-P2 | Text + image extraction | [prepare.js](../n8n/cloud/nodes/prepare.js); [extract_document.py](../extractors/extract_document.py) | `test_extractor.py`; `test_prepare.mjs` | ✅ |
 | REQ-P3 | Gemini strict JSON | Gemini HTTP + [extraction_prompt.md](../prompts/extraction_prompt.md) | exec 507 | ✅ |
 | REQ-P4 | Metadata enrichment | [enrich.js](../n8n/cloud/nodes/enrich.js); `POST /enrich` | 60 node checks + pytest | ✅ |
 | REQ-P5 | Google Sheets append | [sheet_row.js](../n8n/cloud/nodes/sheet_row.js) | 📸 screenshot-sheet | ✅ |
@@ -42,7 +42,7 @@ Legend: ✅ automated test · 📸 screenshot · ⚙️ workflow config · ✋ l
 | ID | Endpoint / rule | File | Evidence | Status |
 |---|---|---|---|---|
 | REQ-E1 | `/enrich`, `/health`, `/categories`, `/sensitivity` | [main.py](../services/enrichment-api/app/main.py) | `test_ops.py` | ✅ |
-| REQ-E2 | Routing, sensitivity, confidence adjust | [enrichment.py](../services/enrichment-api/app/enrichment.py) | `test_enrich.py` | ✅ |
+| REQ-E2 | Routing, sensitivity (public/internal/confidential), confidence adjust | [enrichment.py](../services/enrichment-api/app/enrichment.py) | `test_enrich.py`; `test_logic.py` | ✅ |
 | REQ-E3 | CVSS floor ≥9 → SEV1 + escalate | [severity.py](../services/enrichment-api/app/severity.py) | `test_critical_cvss_*` | ✅ |
 | REQ-E4 | Service catalog | [service_catalog.yaml](../services/enrichment-api/data/service_catalog.yaml) | `test_logic.py` | ✅ |
 
@@ -58,7 +58,7 @@ Legend: ✅ automated test · 📸 screenshot · ⚙️ workflow config · ✋ l
 | ID | Requirement | File | Evidence | Status |
 |---|---|---|---|---|
 | REQ-M1 | OAuth2 send, configurable recipient | Page On-Call + Postmortem Filed | audit `reem.mor3@gmail.com` | ✅ |
-| REQ-M2 | HTML template fields | [compose.js](../n8n/cloud/nodes/compose.js) | 📸 screenshot-email | ✅ |
+| REQ-M2 | HTML template fields + Sheet registry link | [compose.js](../n8n/cloud/nodes/compose.js) | 📸 screenshot-email; §8 link by `document_id` | ✅ |
 
 ## Reliability (REQ-R*)
 
@@ -78,7 +78,7 @@ Legend: ✅ automated test · 📸 screenshot · ⚙️ workflow config · ✋ l
 | BON-5 | Semantic Search | [search_store.py](../services/enrichment-api/app/search_store.py); [001_pgvector_incidents.sql](../migrations/001_pgvector_incidents.sql); `POST /search` | `test_search.py` | ✅ |
 | BON-6 | Multi-model Compare | [compare.py](../services/enrichment-api/app/compare.py); [compare_models.js](../n8n/cloud/nodes/compare_models.js); `POST /compare` | `test_compare.py`; bonus node test | ✅ |
 | BON-7 | Multi-file Batch | [prepare.js](../n8n/cloud/nodes/prepare.js) zip fan-out; [batch.py](../services/enrichment-api/app/batch.py) | [batch_incidents.zip](../samples/batch_incidents.zip); `test_batch.py` | ✅ |
-| BON-8 | Sensitivity alerting | `Is SEV1?` OR confidential OR escalate → Page On-Call | `patch_cloud_workflow.py`; exec 507; pytest | ✅ |
+| BON-8 | Sensitivity alerting | Cloud `Is SEV1?` OR confidential OR escalate; self-hosted `is_sev1` parity | `patch_cloud_workflow.py`; `build_workflow.py`; pytest | ✅ |
 
 ## Verification commands
 
@@ -86,7 +86,11 @@ Legend: ✅ automated test · 📸 screenshot · ⚙️ workflow config · ✋ l
 pytest services\enrichment-api -q
 pytest tests\test_extractor.py -q
 node n8n\cloud\tests\test_node_bodies.mjs
+node n8n\cloud\tests\test_prepare.mjs
+node n8n\cloud\tests\test_compose.mjs
 node n8n\cloud\tests\test_bonus_nodes.mjs
+node scripts\render_architecture.mjs
+node scripts\capture_screenshots.mjs
 python scripts\audit_n8n_cloud.py
 python scripts\sync_n8n_cloud_nodes.py
 python scripts\build_digest_workflow.py

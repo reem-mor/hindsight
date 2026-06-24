@@ -41,7 +41,7 @@ def test_enrich_minor_internal(client):
     r = client.post("/enrich", json=payload)
     body = r.json()
     assert body["computed_severity"] in ("SEV3", "SEV4")
-    assert body["sensitivity"] == "internal"
+    assert body["sensitivity"] == "public"
     assert body["department"] == "SecOps"
     assert "page-oncall" not in body["routing_tags"]
 

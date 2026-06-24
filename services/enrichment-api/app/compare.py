@@ -10,7 +10,7 @@ from typing import Any
 
 def _field_diff(a: Any, b: Any, path: str = "") -> list[dict[str, Any]]:
     diffs: list[dict[str, Any]] = []
-    if type(a) != type(b):
+    if type(a) is not type(b):
         diffs.append({"field": path or "root", "flash": a, "pro": b, "kind": "type_mismatch"})
         return diffs
     if isinstance(a, dict):

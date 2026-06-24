@@ -64,6 +64,40 @@ flowchart LR
 
 ## Bonus data flows (DIAG-4)
 
+### BON-1 Gemini Vision (self-hosted)
+
+```mermaid
+flowchart LR
+  PDF[PDF with chart] --> Ext[extract_document.py]
+  Ext --> Img[PNG per page]
+  Img --> Vision[Gemini Vision HTTP]
+  Ext --> Text[extracted_text]
+  Text --> Gemini[Main JSON extract]
+  Vision --> Notes[Vision notes merged]
+  Notes --> Gemini
+```
+
+### BON-3 Live Dashboard
+
+```mermaid
+flowchart LR
+  Sheet[Google Sheets Incidents] --> Pub[Publish to web CSV]
+  Pub --> Dash[dashboard/index.html ?csv=]
+  Dash --> Charts[SEV CVSS sensitivity routing charts]
+```
+
+### BON-8 Sensitivity alerting
+
+```mermaid
+flowchart TD
+  E[Enrich output] --> IF{SEV1 OR confidential OR escalate?}
+  IF -->|yes| Page[Page On-Call Gmail priority high]
+  IF -->|no| Digest[Postmortem Filed standard email]
+  E --> Sheets[Append to Registry]
+```
+
+See [bonus-challenges.md](bonus-challenges.md) for all eight bonuses, tests, and evidence paths.
+
 ### BON-5 Semantic Search
 
 ```mermaid
@@ -108,7 +142,7 @@ flowchart LR
 
 - **CVSS floor:** `>= 9.0 → SEV1`, `>= 7.0 → SEV2`, `>= 4.0 → SEV3` — authoritative over Gemini severity.
 - **SecOps routing:** `vulnerability-scan`, `phishing`, `intrusion`, etc. map via `service_catalog.yaml`.
-- **Sensitivity:** security types and CVSS `>= 7.0` → `confidential`.
+- **Sensitivity:** `public` / `internal` / `confidential` via keyword + CVSS + CVE signals.
 - **Alerting (BON-8):** `Is SEV1?` pages on SEV1, `confidential`, or `routing_tag=escalate`.
 
 The Python brain (`services/enrichment-api`) and deployed JavaScript (`n8n/cloud/nodes/enrich.js`)

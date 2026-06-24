@@ -69,11 +69,20 @@ def classify_sensitivity(
         ("regulatory exposure", bool(re.search(r"\bregulator|ukgc|dge|fine\b", text))),
         ("multi-jurisdiction", len([j for j in affected_jurisdictions if j and j.upper() != "GLOBAL"]) >= 2),
         ("high-severity CVE (CVSS >= 7.0)", cvss_score is not None and cvss_score >= 7.0),
+        ("CVE identifiers cited", bool(cve_ids)),
     ]
     triggered = [label for label, hit in confidential_signals if hit]
     if triggered:
         rationale.extend(triggered)
         return Sensitivity.CONFIDENTIAL, rationale
+
+    non_sensitive = incident_type not in SECURITY_SENSITIVE_TYPES
+    global_only = not affected_jurisdictions or all(
+        j.strip().upper() == "GLOBAL" for j in affected_jurisdictions if j and j.strip()
+    )
+    if non_sensitive and global_only:
+        rationale.append("non-sensitive incident, no confidential markers, GLOBAL-only scope")
+        return Sensitivity.PUBLIC, rationale
 
     # Anything touching customers/jurisdictions but not the above is internal.
     rationale.append("operational incident, no confidential markers")

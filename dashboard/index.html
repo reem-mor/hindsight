@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HINDSIGHT — Reliability Intelligence</title>
+<title>HINDSIGHT — Cyber Incident Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -140,7 +140,7 @@
       <div>
         <div class="brand">
           <span class="logo">HINDSIGHT<span class="dot">.</span></span>
-          <span class="tagline">institutional memory for incidents</span>
+          <span class="tagline">cyber incident intelligence · SIEM · vuln scans · phishing</span>
         </div>
       </div>
       <div class="meta">
@@ -235,7 +235,11 @@
   <div class="source">
     <span>data source:</span>
     <span id="src-detail"><code>data/incidents.sample.json</code> (bundled)</span>
-    <span style="margin-left:auto">point <code>SHEETS_CSV_URL</code> at a published Google Sheet to go live →</span>
+    <span style="margin-left:auto">
+      <a class="link" href="https://reemmor.app.n8n.cloud/form/21593841-f8b8-43a2-88a8-8595ad3e2f39" target="_blank" rel="noopener">Submit document</a>
+      · <a class="link" href="https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit" target="_blank" rel="noopener">Registry sheet</a>
+      · live CSV via <code>?csv=</code>
+    </span>
   </div>
 </div>
 
@@ -255,6 +259,9 @@ const EMBEDDED_DATA = /*__DATA__*/[{"document_id":"inc-20260314-000","processed_
 const SEV_COLOR = {SEV1:'#FF4D5E', SEV2:'#FF9F43', SEV3:'#FFD23F', SEV4:'#4DD0A7'};
 const SEV_ORDER = ['SEV1','SEV2','SEV3','SEV4'];
 const $ = s => document.querySelector(s);
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 /* ---- normalize one record from either JSON or CSV row ---- */
 function normalize(r){
@@ -310,7 +317,7 @@ async function loadData(){
 
 function setSource(kind, label){
   $('#m-src').textContent = kind==='live' ? 'live' : 'sample feed';
-  $('#src-detail').innerHTML = label;
+  $('#src-detail').textContent = label.replace(/<[^>]+>/g, '');
 }
 function showBanner(msg){ const b=$('#banner'); b.style.display='block'; b.textContent='⚠ '+msg; }
 
@@ -349,7 +356,7 @@ function buildPulse(){
       const r=DATA.find(d=>d.id===el.dataset.id); if(!r) return;
       const rect=svg.getBoundingClientRect();
       const cx=(parseFloat(el.getAttribute('x1')||el.getAttribute('cx'))/1000)*rect.width;
-      tip.innerHTML=`<b>${r.sev}</b> · ${fmtDate(r.at)}<br>${r.title}`;
+      tip.innerHTML=`<b>${esc(r.sev)}</b> · ${esc(fmtDate(r.at))}<br>${esc(r.title)}`;
       tip.style.left=cx+'px'; tip.style.top='12px'; tip.style.opacity='1';
     });
     el.addEventListener('mouseleave',()=>tip.style.opacity='0');
@@ -449,16 +456,16 @@ function rowHTML(r){
   const tagEls=r.tags.slice(0,3).map(t=>{
     const hot=/page-oncall|exec-escalation|budget-breach/.test(t);
     const rep=/repeat-offender/.test(t);
-    return `<span class="tag ${hot?'hot':''} ${rep?'rep':''}">${t}</span>`;
+    return `<span class="tag ${hot?'hot':''} ${rep?'rep':''}">${esc(t)}</span>`;
   }).join('');
   const extra=r.tags.length>3?`<span class="tag">+${r.tags.length-3}</span>`:'';
-  const cvssBadge=r.cvss!=null?` <span class="tag hot" title="CVSS base score${r.cve.length?' · '+r.cve.join(', '):''}">CVSS ${r.cvss}</span>`:'';
+  const cvssBadge=r.cvss!=null?` <span class="tag hot" title="CVSS base score${r.cve.length?' · '+esc(r.cve.join(', ')):''}">CVSS ${esc(r.cvss)}</span>`:'';
   return `<tr>
-    <td><span class="sev-badge sev-${r.sev}">${r.sev}</span></td>
-    <td><span class="ttl">${r.title}${cvssBadge}${repeat?' <span class="tag rep" title="recurring failure">↻</span>':''}<span class="sum">${r.summary}</span></span></td>
-    <td><span class="svc">${r.services.join(', ')||'—'}</span><br><span class="svc" style="color:var(--dim)">${r.jurisdictions.join(' · ')}</span></td>
-    <td><span class="mttr">${r.mttr!=null?r.mttr+'m':'—'}</span></td>
-    <td><span class="st ${r.status}">${r.status}</span></td>
+    <td><span class="sev-badge sev-${esc(r.sev)}">${esc(r.sev)}</span></td>
+    <td><span class="ttl">${esc(r.title)}${cvssBadge}${repeat?' <span class="tag rep" title="recurring failure">↻</span>':''}<span class="sum">${esc(r.summary)}</span></span></td>
+    <td><span class="svc">${esc(r.services.join(', ')||'—')}</span><br><span class="svc" style="color:var(--dim)">${esc(r.jurisdictions.join(' · '))}</span></td>
+    <td><span class="mttr">${r.mttr!=null?esc(r.mttr)+'m':'—'}</span></td>
+    <td><span class="st ${esc(r.status)}">${esc(r.status)}</span></td>
     <td><div class="tags">${tagEls}${extra}</div></td>
   </tr>`;
 }

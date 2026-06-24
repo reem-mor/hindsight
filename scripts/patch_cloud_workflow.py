@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-from n8n_cloud_api import WORKFLOW_ID, load_dotenv, api_get, api_request, strip_workflow_meta
+from n8n_cloud_api import WORKFLOW_ID, GEMINI_GENERATE_URL, load_dotenv, api_get, api_request, strip_workflow_meta
 
 
 def patch_sev1_routing(wf: dict) -> bool:
@@ -42,6 +42,43 @@ def patch_sev1_routing(wf: dict) -> bool:
     return changed
 
 
+def patch_form_copy(wf: dict) -> bool:
+    """Professional intake copy on the public form trigger."""
+    changed = False
+    for node in wf.get("nodes", []):
+        if node.get("type") != "n8n-nodes-base.formTrigger":
+            continue
+        params = node.setdefault("parameters", {})
+        desired = {
+            "formTitle": "HINDSIGHT — Cyber Incident Intake",
+            "formDescription": (
+                "Upload a cyber incident log (.pdf, .md, .txt, or .zip): SIEM export, "
+                "vulnerability scan, phishing report, or intrusion writeup. "
+                "HINDSIGHT extracts with Gemini, re-scores severity deterministically, "
+                "routes to SecOps, and files to the registry."
+            ),
+        }
+        for key, val in desired.items():
+            if params.get(key) != val:
+                params[key] = val
+                changed = True
+        fields = params.get("formFields", {}).get("values", [])
+        for field in fields:
+            if field.get("fieldType") == "file" and field.get("fieldLabel") != "Incident Log":
+                field["fieldLabel"] = "Incident Log"
+                changed = True
+        opts = params.setdefault("options", {})
+        respond = opts.setdefault("respondWithOptions", {}).setdefault("values", {})
+        success = (
+            "Received — HINDSIGHT is analyzing your document. "
+            "The registry and your inbox will update shortly."
+        )
+        if respond.get("formSubmittedText") != success:
+            respond["formSubmittedText"] = success
+            changed = True
+    return changed
+
+
 def patch_form_zip(wf: dict) -> bool:
     """Allow .zip uploads on the form trigger (BON-7)."""
     changed = False
@@ -55,6 +92,21 @@ def patch_form_zip(wf: dict) -> bool:
                 if ".zip" not in accept:
                     field["acceptFileTypes"] = accept + ",.zip" if accept else ".pdf,.md,.txt,.markdown,.zip"
                     changed = True
+    return changed
+
+
+def patch_gemini_model(wf: dict) -> bool:
+    """Point Gemini HTTP nodes at gemini-3-flash-preview (avoids 404 on bare gemini-3-flash)."""
+    changed = False
+    for node in wf.get("nodes", []):
+        if node.get("type") != "n8n-nodes-base.httpRequest":
+            continue
+        url = str(node.get("parameters", {}).get("url", ""))
+        if "generativelanguage.googleapis.com" not in url or "generateContent" not in url:
+            continue
+        if url != GEMINI_GENERATE_URL:
+            node.setdefault("parameters", {})["url"] = GEMINI_GENERATE_URL
+            changed = True
     return changed
 
 
@@ -89,8 +141,12 @@ def main() -> int:
     patches = []
     if patch_sev1_routing(wf):
         patches.append("BON-8 Is SEV1? routing")
+    if patch_form_copy(wf):
+        patches.append("Form intake copy")
     if patch_form_zip(wf):
         patches.append("BON-7 form .zip accept")
+    if patch_gemini_model(wf):
+        patches.append("Gemini model URL → gemini-3-flash-preview")
     if patch_gemini_retry(wf):
         patches.append("BON-4 Gemini retry")
 

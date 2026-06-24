@@ -65,6 +65,19 @@ def test_severity_endpoint_minor_stays_low(client):
 
 
 # ---- sensitivity ----------------------------------------------------------- #
+def test_sensitivity_confidential_on_cve_ids(client):
+    r = client.post(
+        "/sensitivity",
+        json={
+            "incident_type": "vulnerability-scan",
+            "summary": "Informational scan note.",
+            "affected_jurisdictions": ["GLOBAL"],
+            "cve_ids": ["CVE-2026-11002"],
+        },
+    )
+    assert r.json()["sensitivity"] == "confidential"
+
+
 def test_sensitivity_confidential_on_security(client):
     r = client.post(
         "/sensitivity",
@@ -76,9 +89,39 @@ def test_sensitivity_confidential_on_security(client):
 def test_sensitivity_internal_default(client):
     r = client.post(
         "/sensitivity",
-        json={"incident_type": "other", "summary": "slow internal SOAR ticket", "affected_jurisdictions": []},
+        json={
+            "incident_type": "capacity",
+            "summary": "CPU saturation on batch workers during nightly job.",
+            "affected_jurisdictions": ["UK"],
+        },
     )
     assert r.json()["sensitivity"] == "internal"
+
+
+def test_sensitivity_public_on_benign_incident(client):
+    r = client.post(
+        "/sensitivity",
+        json={
+            "incident_type": "other",
+            "summary": "Routine synthetic probe latency blip on staging.",
+            "affected_jurisdictions": [],
+        },
+    )
+    body = r.json()
+    assert body["sensitivity"] == "public"
+    assert "non-sensitive" in " ".join(body["rationale"]).lower()
+
+
+def test_sensitivity_public_global_only_jurisdiction(client):
+    r = client.post(
+        "/sensitivity",
+        json={
+            "incident_type": "configuration",
+            "summary": "Non-production config drift corrected during maintenance.",
+            "affected_jurisdictions": ["GLOBAL"],
+        },
+    )
+    assert r.json()["sensitivity"] == "public"
 
 
 # ---- recurrence ------------------------------------------------------------ #

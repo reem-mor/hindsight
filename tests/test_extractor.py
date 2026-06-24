@@ -42,3 +42,21 @@ def test_extractor_pdf_sample_if_present() -> None:
     assert data["ok"] is True
     assert data["file_type"] == "pdf"
     assert data["char_count"] > 0
+
+
+def test_extractor_empty_docx_rejected(tmp_path) -> None:
+    docx = tmp_path / "empty.docx"
+    try:
+        import docx as docx_mod
+    except ImportError:
+        return
+    docx_mod.Document().save(str(docx))
+    proc = subprocess.run(
+        [sys.executable, str(EXTRACTOR), str(docx)],
+        capture_output=True,
+        text=True,
+        cwd=str(ROOT),
+    )
+    data = json.loads(proc.stdout)
+    assert data["ok"] is False
+    assert "no extractable text" in data["error"]

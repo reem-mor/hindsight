@@ -46,10 +46,9 @@ Open each of those nodes and select the matching credential from the dropdown
   named `Incidents`. Create the tab with these headers in row 1 (matches the dashboard schema):
 
   ```
-  document_id | processed_at | incident_title | incident_type | reported_severity |
-  computed_severity | department | affected_services | affected_jurisdictions | sensitivity |
-  ttr_minutes | status | recurrence_fingerprint | routing_tags | action_item_total |
-  action_items_without_owner | summary | confidence_score
+  document_id | filename | file_type | processed_at | classification | department |
+  sentiment | confidence_score | summary | routing_tag | sensitivity | action_items |
+  cvss_score | cve_ids
   ```
   Mapping mode is **auto-map**, so as long as the headers match, every field lands in the
   right column.
@@ -83,7 +82,26 @@ the compose network. If you run the API somewhere else, change that URL (e.g.
 
 Toggle **Active** (top-right). The Local File Trigger polls `incoming_docs/`. Drop a file
 from `samples/` to watch a run end-to-end. First run with a SEV1 sample (e.g.
-`payments_sev1_checkout_outage.md`) to see the paging branch fire.
+`vuln_scan_critical_openssl.md`) to see the paging branch fire.
+
+### Automated local setup (Docker)
+
+Uses the **same sheet ID and credential names as Cloud** (OAuth still requires one Google sign-in per credential type on local).
+
+```powershell
+copy .env.example .env   # HINDSIGHT_SHEET_ID, GEMINI_API_KEY, N8N_LOCAL_* 
+
+.\.venv\Scripts\python.exe scripts\setup_local_stack.py
+# or step-by-step:
+#   import_local_credentials.py → import_selfhosted_workflow.py → publish → restart
+```
+
+**OAuth (once per machine):** Credentials → create with **exact Cloud names**:
+- `Google Sheets Amdocs Course API` → Connect → pick registry sheet / `Incidents` tab
+- `Gmail Amdocs course API` → Connect → same Gmail as Cloud
+
+Stable local credential IDs (override in `.env` if n8n assigns different IDs):
+`hindsight-gemini-local-001`, `hindsight-sheets-local-001`, `hindsight-gmail-local-001`
 
 ---
 

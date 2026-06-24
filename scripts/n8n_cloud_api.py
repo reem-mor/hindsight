@@ -10,6 +10,10 @@ from urllib.request import Request, urlopen
 
 WORKFLOW_ID = "aYEv22StywIPL3Rq"
 SHEET_ID_DEFAULT = "1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk"
+GEMINI_MODEL = "gemini-3-flash-preview"
+GEMINI_GENERATE_URL = (
+    f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+)
 
 NODE_FILES = {
     "Prepare Document": "prepare.js",

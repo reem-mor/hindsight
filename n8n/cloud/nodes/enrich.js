@@ -123,7 +123,7 @@ function scoreSeverity(reported, incidentType, resolved, jurisdictions, ttr, sum
   return { computed: computed, score: score, rationale: rationale, review: review };
 }
 
-function classifySensitivity(incidentType, jurisdictions, entitiesBlob, summary, cvss) {
+function classifySensitivity(incidentType, jurisdictions, entitiesBlob, summary, cvss, cveIds) {
   const text = (String(summary || "") + " " + String(entitiesBlob || "")).toLowerCase();
   const realJx = (jurisdictions || []).filter(function (j) { return j && j.toUpperCase() !== "GLOBAL"; });
   const signals = [
@@ -132,11 +132,17 @@ function classifySensitivity(incidentType, jurisdictions, entitiesBlob, summary,
     ["monetary / payment exposure", /\bfunds?|payment|charge|refund|monetary\b/.test(text)],
     ["regulatory exposure", /\bregulator|ukgc|dge|fine\b/.test(text)],
     ["multi-jurisdiction", realJx.length >= 2],
-    ["high-severity CVE (CVSS >= 7.0)", cvss !== null && cvss !== undefined && Number(cvss) >= 7.0]
+    ["high-severity CVE (CVSS >= 7.0)", cvss !== null && cvss !== undefined && Number(cvss) >= 7.0],
+    ["CVE identifiers cited", Array.isArray(cveIds) && cveIds.length > 0],
   ];
   const triggered = [];
   for (const s of signals) { if (s[1]) triggered.push(s[0]); }
   if (triggered.length) return { sensitivity: "confidential", rationale: triggered };
+  const nonSensitive = !SECURITY_SENSITIVE_TYPES[incidentType];
+  const globalOnly = !realJx.length;
+  if (nonSensitive && globalOnly) {
+    return { sensitivity: "public", rationale: ["non-sensitive incident, no confidential markers, GLOBAL-only scope"] };
+  }
   return { sensitivity: "internal", rationale: ["operational incident, no confidential markers"] };
 }
 
@@ -157,12 +163,8 @@ function fingerprint(services, rootCause, incidentType) {
   for (const t of tokens) { if (!STOP[t] && t.length > 2) uniq[t] = 1; }
   const kw = Object.keys(uniq).sort().slice(0, 6);
   const basis = [incidentType].concat(services.slice().sort()).concat(kw).join("|");
-  let h1 = 0x811c9dc5 >>> 0;
-  for (let i = 0; i < basis.length; i++) { h1 ^= basis.charCodeAt(i); h1 = Math.imul(h1, 0x01000193) >>> 0; }
-  const basis2 = basis.split("").reverse().join("");
-  let h2 = 0x811c9dc5 >>> 0;
-  for (let i = 0; i < basis2.length; i++) { h2 ^= basis2.charCodeAt(i); h2 = Math.imul(h2, 0x01000193) >>> 0; }
-  return (("00000000" + h1.toString(16)).slice(-8) + ("00000000" + h2.toString(16)).slice(-8)).slice(0, 12);
+  const crypto = require("crypto");
+  return crypto.createHash("sha1").update(basis, "utf8").digest("hex").slice(0, 12);
 }
 
 function adjustConfidence(g) {
@@ -213,7 +215,7 @@ for (let idx = 0; idx < items.length; idx++) {
   const entitiesBlob = []
     .concat(ent.people || [], ent.teams || [], ent.systems || [], ent.error_codes || [])
     .join(" ");
-  const sens = classifySensitivity(g.incident_type || "other", jurisdictions, entitiesBlob, g.summary || "", cvss);
+  const sens = classifySensitivity(g.incident_type || "other", jurisdictions, entitiesBlob, g.summary || "", cvss, cveIds);
 
   let primary = null;
   if (resolved.length) {
@@ -258,7 +260,7 @@ for (let idx = 0; idx < items.length; idx++) {
     computed_severity: verdict.computed,
     severity_score: verdict.score,
     severity_rationale: verdict.rationale,
-    severity_review: verdict.review,
+    severity_review_needed: verdict.review,
     department: department,
     routed_teams: teams,
     affected_services_resolved: resolvedNames,

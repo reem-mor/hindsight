@@ -99,8 +99,10 @@ def main() -> int:
 
     gem_params = gemini.get("parameters", {})
     url = str(gem_params.get("url", ""))
-    if "gemini-3-flash" in url:
-        add("review", "Gemini model string", "gemini-3-flash — try gemini-3-flash-preview if 404")
+    if "gemini-3-flash-preview" in url:
+        add("ok", "Gemini model string", "gemini-3-flash-preview")
+    elif "gemini-3-flash" in url:
+        add("review", "Gemini model string", "gemini-3-flash — run patch_cloud_workflow.py for preview URL")
 
     sheets = nodes.get(SHEETS_NODE, {})
     sheets_creds = sheets.get("credentials") or {}

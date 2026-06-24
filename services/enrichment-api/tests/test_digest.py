@@ -1,7 +1,7 @@
 """Tests for daily digest aggregation (BON-2)."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from app.digest import aggregate_digest, build_digest_html, filter_last_24h
 

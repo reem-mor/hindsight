@@ -1,4 +1,5 @@
 {
+  "id": "2401581a-0001-4000-8000-hindsight001",
   "name": "HINDSIGHT \u2014 Cyber Incident Intelligence",
   "nodes": [
     {
@@ -13,7 +14,7 @@
           "ignored": "**/.*"
         }
       },
-      "id": "e8503236-533c-4a26-a929-9b522352391c",
+      "id": "03cd15ce-8d02-4757-9749-fc11bf0066ab",
       "name": "\ud83d\udcc2 New postmortem",
       "type": "n8n-nodes-base.localFileTrigger",
       "typeVersion": 1,
@@ -26,7 +27,7 @@
       "parameters": {
         "command": "=python3 /data/extractors/extract_document.py \"{{ $json.path }}\" --image-dir /data/tmp_images"
       },
-      "id": "4559ab2a-d986-47a9-a7ac-782490486e84",
+      "id": "1cbefd1f-a788-42f1-886b-ac155f0cdc02",
       "name": "\ud83d\udddc Extract text + images",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
@@ -39,7 +40,7 @@
       "parameters": {
         "jsCode": "// stdout of the extractor is a single JSON object\nconst raw = $input.first().json.stdout;\nlet doc;\ntry { doc = JSON.parse(raw); }\ncatch (e) { throw new Error('Extractor did not return JSON: ' + raw?.slice(0,200)); }\nif (!doc.ok) { throw new Error('Extraction failed for ' + doc.filename); }\n// correlation id ties logs across Gemini + enrichment + sheets\nconst corr = 'hs-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7);\nreturn [{ json: { ...doc, correlation_id: corr,\n  has_images: Array.isArray(doc.images) && doc.images.length > 0 } }];"
       },
-      "id": "397e6442-ce92-46ab-aa5a-735430ea994a",
+      "id": "184351ae-8203-4287-9043-65b377025999",
       "name": "Parse extraction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -57,7 +58,7 @@
           },
           "conditions": [
             {
-              "id": "557168ad-82fd-4a4e-b48c-615dc124c2dc",
+              "id": "c8269cad-632e-47e3-a0bf-3d6357461a46",
               "leftValue": "={{ $json.has_images }}",
               "rightValue": true,
               "operator": {
@@ -71,7 +72,7 @@
         },
         "options": {}
       },
-      "id": "11c4763f-8e56-4907-ac6f-9f4b477cf0ba",
+      "id": "90c4ff60-c6b0-4f62-948c-61e86a2433fa",
       "name": "Has dashboard image?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -83,7 +84,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -102,7 +103,7 @@
         "jsonBody": "={\n  \"contents\": [{ \"parts\": [\n    { \"text\": \"Read this SIEM or vulnerability-scan chart screenshot. Return ONLY JSON: {image_kind, metric_name, unit, anomaly_observed, approx_peak_value, approx_baseline_value, time_window, one_line_summary}.\" },\n    { \"inline_data\": { \"mime_type\": \"image/png\", \"data\": \"{{ $binary.data0 ? $binary.data0.toString('base64') : '' }}\" } }\n  ]}],\n  \"generationConfig\": { \"temperature\": 0.2, \"responseMimeType\": \"application/json\" }\n}",
         "options": {}
       },
-      "id": "d20d871a-0571-43f8-b7e5-01fbae899b02",
+      "id": "564d2fa8-f0f1-468e-93f9-968d9f8e0f7a",
       "name": "\ud83d\udc41 Gemini Vision \u2014 read chart",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -125,7 +126,7 @@
       "parameters": {
         "jsCode": "// Fold any vision JSON into the extraction item as vision_notes.\nconst items = $input.all();\nconst base = items.find(i => i.json.extracted_text) || items[0];\nlet visionNotes = '';\nconst v = items.find(i => i.json.candidates || i.json.metric_name);\nif (v) {\n  try {\n    const t = v.json.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(v.json);\n    visionNotes = typeof t === 'string' ? t : JSON.stringify(t);\n  } catch (e) { visionNotes = ''; }\n}\nreturn [{ json: { ...base.json, vision_notes: visionNotes } }];"
       },
-      "id": "f2b12196-9c34-4062-9504-755abe53f01e",
+      "id": "49802b44-0d2a-4fa0-91b7-7af90e7442bb",
       "name": "Attach vision notes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -138,7 +139,7 @@
       "parameters": {
         "jsCode": "const j = $input.first().json;\nconst prompt = `You are HINDSIGHT, a cybersecurity incident-log analyst. Read the SIEM export, vuln scan, or phishing report and return ONLY a valid JSON object matching this schema exactly:\\n{incident_title, summary, severity (SEV1|SEV2|SEV3|SEV4), incident_type (security|data-incident|vulnerability-scan|malware|phishing|intrusion|ddos|other), status, affected_services[], affected_jurisdictions[], root_cause, trigger, detection_method, entities:{people[],teams[],systems[],dates[],error_codes[]}, action_items:[{action,owner,priority}], contributing_factors[], sentiment, blameless_quality, cvss_score, cve_ids[], confidence_score, metrics:{detected_at,resolved_at,ttd_minutes,ttr_minutes,customer_impact}}\\nFor vuln scans set cvss_score and cve_ids verbatim. When unsure of severity pick the LOWER one.\\n\\nVISION NOTES (from embedded SIEM/scan charts):\\n${j.vision_notes || 'none'}\\n\\nDOCUMENT:\\n${j.extracted_text}`;\nreturn [{ json: { ...j, prompt } }];"
       },
-      "id": "79f4b4dc-3d92-4224-98f5-2c433bdcaf26",
+      "id": "49848f89-5862-4b87-95fc-26c1b837de56",
       "name": "Build extraction prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -150,7 +151,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -169,7 +170,7 @@
         "jsonBody": "={\n  \"contents\": [{ \"parts\": [{ \"text\": {{ JSON.stringify($json.prompt) }} }] }],\n  \"generationConfig\": { \"temperature\": 0.2, \"responseMimeType\": \"application/json\" }\n}",
         "options": {}
       },
-      "id": "e008c7ec-e2a4-4ca9-8ec7-e8bb1a34ab62",
+      "id": "e1d6e66a-66d9-4a99-9ff7-32fbde87c034",
       "name": "\ud83e\udde0 Gemini \u2014 extract incident",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -191,7 +192,7 @@
       "parameters": {
         "jsCode": "const FENCE = String.fromCharCode(96, 96, 96);\nconst REQUIRED = ['summary', 'sentiment', 'action_items', 'confidence_score'];\nfunction validateGeminiShape(g) {\n  const missing = [];\n  for (let i = 0; i < REQUIRED.length; i++) {\n    if (g[REQUIRED[i]] === undefined) missing.push(REQUIRED[i]);\n  }\n  if (!g.incident_type && !g.classification) missing.push('incident_type|classification');\n  if (!Array.isArray(g.action_items)) missing.push('action_items(array)');\n  if (missing.length) throw new Error('Gemini JSON missing required fields: ' + missing.join(', '));\n}\nconst prev = $('Build extraction prompt').first().json;\nconst resp = $input.first().json;\nlet txt = resp.candidates?.[0]?.content?.parts?.[0]?.text;\nif (!txt) throw new Error('Gemini returned no text');\ntxt = String(txt).trim();\nif (txt.indexOf(FENCE) !== -1) {\n  txt = txt.split(FENCE).join('');\n  if (txt.toLowerCase().indexOf('json') === 0) txt = txt.slice(4);\n  txt = txt.trim();\n}\nlet g; try { g = JSON.parse(txt); } catch(e){ throw new Error('Bad JSON from Gemini: '+txt.slice(0,200)); }\nvalidateGeminiShape(g);\ng.filename = prev.filename;\ng.correlation_id = prev.correlation_id;\nreturn [{ json: g }];"
       },
-      "id": "b2ac0150-0d57-480f-b234-73d894fd915f",
+      "id": "c62a87a0-ce18-498f-a776-78bbdd69fd5f",
       "name": "Parse Gemini JSON",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -209,7 +210,7 @@
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "961646e2-a48e-4dac-b0cb-a137c62e13f0",
+      "id": "6b99ad0f-ca50-4db4-9c26-94cacbfd32ea",
       "name": "\u2699\ufe0f Enrich (FastAPI)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -223,9 +224,9 @@
     },
     {
       "parameters": {
-        "jsCode": "function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}\nfunction actionsCsv(a){if(!a||!a.length)return'';return a.map(x=>{const o=(x&&x.owner&&String(x.owner).trim())?String(x.owner):'UNOWNED';const p=(x&&x.priority)?String(x.priority):'-';return p+': '+String(x.action||'')+' ('+o+')';}).join('; ');}\nfunction fileType(n){const m=String(n||'').match(/\\.([^.]+)$/);return m?m[1].toLowerCase():'txt';}\nconst g=$('Parse Gemini JSON').first().json;\nconst e=$input.first().json;\nconst classification=String(e.incident_type||g.incident_type||'other');\nconst filename=String(e.source_filename||g.filename||g.source_filename||'unknown');\nconst sentiment=String(g.sentiment||'neutral');\nconst routingTag=String(e.routing_tag||'auto-approved');\nconst summary=String(g.summary||'').slice(0,500);\nconst actionItems=actionsCsv(g.action_items||[]);\nconst row={document_id:e.document_id,filename:filename,file_type:fileType(filename),processed_at:e.processed_at,classification:classification,department:e.department,sentiment:sentiment,confidence_score:e.confidence_score,summary:summary,routing_tag:routingTag,sensitivity:e.sensitivity,action_items:actionItems,cvss_score:e.cvss_score,cve_ids:(e.cve_ids||[]).join(', ')};\nconst emailHtml='<h2>Document Processed</h2><p><b>File:</b> '+esc(filename)+'</p>+'<p><b>Classification:</b> '+esc(classification)+'</p><p><b>Sentiment:</b> '+esc(sentiment)+'</p>+'<p><b>Department:</b> '+esc(e.department)+'</p><p><b>Sensitivity:</b> '+esc(e.sensitivity)+'</p>+'<p><b>Routing tag:</b> '+esc(routingTag)+'</p><h3>Summary</h3><p>'+esc(summary)+'</p>+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>';const subjDigest='['+classification+'] New document processed: '+filename;\nconst subjSev1='[CONFIDENTIAL ESCALATE] '+filename+' - '+e.department;\nconst isSev1=e.computed_severity==='SEV1';\nreturn [{json:{row,markdown:'# '+e.computed_severity+' - '+classification,is_sev1:isSev1,e,g,emailSubjectDigest:subjDigest,emailHtmlDigest:emailHtml,emailSubjectSev1:subjSev1,emailHtmlSev1:emailHtml,out_path:`/data/output_docs/${e.document_id}.md`}}];"
+        "jsCode": "function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}\nfunction actionsCsv(a){if(!a||!a.length)return'';return a.map(x=>{const o=(x&&x.owner&&String(x.owner).trim())?String(x.owner):'UNOWNED';const p=(x&&x.priority)?String(x.priority):'-';return p+': '+String(x.action||'')+' ('+o+')';}).join('; ');}\nfunction fileType(n){const m=String(n||'').match(/\\.([^.]+)$/);return m?m[1].toLowerCase():'txt';}\nconst g=$('Parse Gemini JSON').first().json;\nconst e=$input.first().json;\nconst classification=String(e.incident_type||g.incident_type||'other');\nconst filename=String(e.source_filename||g.filename||g.source_filename||'unknown');\nconst sentiment=String(g.sentiment||'neutral');\nconst routingTag=String(e.routing_tag||'auto-approved');\nconst summary=String(g.summary||'').slice(0,500);\nconst actionItems=actionsCsv(g.action_items||[]);\nconst row={document_id:e.document_id,filename:filename,file_type:fileType(filename),processed_at:e.processed_at,classification:classification,department:e.department,sentiment:sentiment,confidence_score:e.confidence_score,summary:summary,routing_tag:routingTag,sensitivity:e.sensitivity,action_items:actionItems,cvss_score:e.cvss_score,cve_ids:(e.cve_ids||[]).join(', ')};\nconst emailHtml='<h2>Document Processed</h2><p><b>File:</b> '+esc(filename)+'</p>+'<p><b>Classification:</b> '+esc(classification)+'</p><p><b>Sentiment:</b> '+esc(sentiment)+'</p>+'<p><b>Department:</b> '+esc(e.department)+'</p><p><b>Sensitivity:</b> '+esc(e.sensitivity)+'</p>+'<p><b>Routing tag:</b> '+esc(routingTag)+'</p><h3>Summary</h3><p>'+esc(summary)+'</p>+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>';const subjDigest='['+classification+'] New document processed: '+filename;\nconst subjSev1='[CONFIDENTIAL ESCALATE] '+filename+' - '+e.department;\nconst isSev1=e.computed_severity==='SEV1'||String(e.sensitivity)==='confidential'||routingTag==='escalate';\nreturn [{json:{row,markdown:'# '+e.computed_severity+' - '+classification,is_sev1:isSev1,e,g,emailSubjectDigest:subjDigest,emailHtmlDigest:emailHtml,emailSubjectSev1:subjSev1,emailHtmlSev1:emailHtml,out_path:`/data/output_docs/${e.document_id}.md`}}];"
       },
-      "id": "8cdca8cc-ea7a-40f5-991a-052b4cdd2b64",
+      "id": "8d0637bc-0a64-47c3-973d-c62f41b6a0b5",
       "name": "Compose record + outputs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -238,7 +239,7 @@
       "parameters": {
         "jsCode": "return [{ json: $input.first().json.row }];"
       },
-      "id": "43a07a34-33fe-4a14-a19a-a915aa9d0999",
+      "id": "b4c7115e-1666-455e-b556-b52bcacf4b2b",
       "name": "Flatten row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -267,7 +268,7 @@
         },
         "options": {}
       },
-      "id": "3e959507-f2dc-4032-9647-a5b9c6778a95",
+      "id": "713ceaff-89db-46b5-be9a-b58e10752654",
       "name": "\ud83d\udcca Append to registry",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -278,7 +279,7 @@
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "REPLACE_SHEETS",
-          "name": "Google Sheets"
+          "name": "Google Sheets Amdocs Course API"
         }
       }
     },
@@ -286,7 +287,7 @@
       "parameters": {
         "jsCode": "const j = $('Compose record + outputs').first().json;\nconst buff = Buffer.from(j.markdown, 'utf8');\nreturn [{ json: { out_path: j.out_path },\n  binary: { data: { data: buff.toString('base64'),\n    mimeType: 'text/markdown', fileName: j.document_id + '.md' } } }];"
       },
-      "id": "f30ee1d2-a754-48b0-84d4-746132ae30b6",
+      "id": "f12eede5-c6ab-46a2-bd62-15a57b0afa18",
       "name": "Markdown \u2192 file",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -302,7 +303,7 @@
         "dataPropertyName": "data",
         "options": {}
       },
-      "id": "60ba7b01-033a-4b76-9254-223359e184ac",
+      "id": "bb0d7901-f66e-4053-a9d8-85f32cf672dd",
       "name": "\ud83d\udcbe Write output doc",
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
@@ -320,7 +321,7 @@
           },
           "conditions": [
             {
-              "id": "7a831f15-864e-4a11-98b2-14ef6ba2de5b",
+              "id": "9e2b9aa9-4135-47ee-a263-a73abd4c5d53",
               "leftValue": "={{ $json.is_sev1 }}",
               "rightValue": true,
               "operator": {
@@ -334,7 +335,7 @@
         },
         "options": {}
       },
-      "id": "3c577768-db13-48ea-bbea-cc01340a5791",
+      "id": "935341e4-c7dd-4bbf-8c4d-6cd8fd2b6ba6",
       "name": "SEV1?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -354,7 +355,7 @@
           "priority": "high"
         }
       },
-      "id": "f4356a90-70e4-45eb-b8ed-7daab457906a",
+      "id": "cdf01b97-a681-4002-a20a-6a375e70a926",
       "name": "\ud83d\udea8 Page on-call (SEV1)",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
@@ -365,7 +366,7 @@
       "credentials": {
         "gmailOAuth2": {
           "id": "REPLACE_GMAIL",
-          "name": "Gmail"
+          "name": "Gmail Amdocs course API"
         }
       }
     },
@@ -378,7 +379,7 @@
         "message": "={{ $('Compose record + outputs').first().json.emailHtmlDigest }}",
         "options": {}
       },
-      "id": "e2c36c47-9a13-4a98-aa12-8ceee42e7572",
+      "id": "ec10bc4d-8aa2-4a03-bfae-49c95e1ddde3",
       "name": "\ud83d\udce7 Send digest",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
@@ -389,7 +390,7 @@
       "credentials": {
         "gmailOAuth2": {
           "id": "REPLACE_GMAIL",
-          "name": "Gmail"
+          "name": "Gmail Amdocs course API"
         }
       }
     },
@@ -400,8 +401,8 @@
         "width": 540,
         "color": 4
       },
-      "id": "bd009f4f-4504-4430-8078-70893fc0ec7a",
-      "name": "Note da356a",
+      "id": "21b55831-22c1-4753-b03e-0c9fb6c8a43f",
+      "name": "Note 9c687d",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -416,8 +417,8 @@
         "width": 300,
         "color": 5
       },
-      "id": "6444b03e-6e84-49a0-8ba5-543cb95a36e3",
-      "name": "Note b0e906",
+      "id": "789d9e68-22d0-45cf-afb7-be0db3f75876",
+      "name": "Note 8af0c7",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -432,8 +433,8 @@
         "width": 320,
         "color": 3
       },
-      "id": "64a46529-5c93-4323-9fe9-63263e8c9f31",
-      "name": "Note 245e3d",
+      "id": "4b5c824e-a360-4487-8853-0fe627edcd46",
+      "name": "Note 4a644f",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -448,8 +449,8 @@
         "width": 280,
         "color": 6
       },
-      "id": "7767bf1d-7879-4e53-b9ce-b328247ba8cb",
-      "name": "Note 7a3e80",
+      "id": "0924b04a-1b9b-4a46-a1dd-2f657cae7b85",
+      "name": "Note 7fc5fc",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [

@@ -14,6 +14,17 @@
 
 Both use Gemini 3 Flash extraction and the same SecOps routing rubric (CVSS floor, `routing_tag`, sensitivity).
 
+### Supported file formats
+
+| Format | n8n Cloud (grading) | Self-hosted (`incoming_docs/`) |
+|---|---|---|
+| `.pdf` | Yes (native inline upload) | Yes (+ embedded-image Vision branch) |
+| `.md`, `.txt`, `.markdown` | Yes | Yes |
+| `.zip` | Yes (batch fan-out, `.md`/`.txt` inside; max **25** files per archive) | Yes |
+| `.docx` | **No** — rejected in `prepare.js` with a clear error | Yes (`extractors/extract_document.py`) |
+
+DOCX on Cloud would be UTF-8 garbage through the text path; use `docker compose` for Word documents. Nested ZIPs inside a batch archive are not extracted — only top-level `.md`/`.txt` entries.
+
 ---
 
 ## 2. Why Google credentials are not in the repo
@@ -91,12 +102,19 @@ Patch workflow + node bodies from repo:
 
 ### Activate + live test
 
+**Production form URL:** `https://reemmor.app.n8n.cloud/form/21593841-f8b8-43a2-88a8-8595ad3e2f39` (see 📸 `docs/screenshot-form-cloud.png`)
+
 1. Toggle workflow **Active**
-2. Copy **Production URL** from **Submit a Postmortem** (form trigger)
-3. Upload `samples/vuln_scan_critical_openssl.md`
+2. Submit `samples/vuln_scan_critical_openssl.md` via the form above
 4. Confirm row in Sheet + email at `reem.mor3@gmail.com`
 
-If Gemini 404: change model URL to `gemini-3-flash-preview`.
+If Gemini 404: model URL is set to `gemini-3-flash-preview` in repo + Cloud patch script. Re-run `patch_cloud_workflow.py` after pulling.
+
+**Known limitation:** if Gemini succeeds but Sheets/Gmail fails, n8n retry may append a duplicate row or resend email. There is no Cloud-side dedupe by `document_id` today.
+
+### Bonus: multi-model compare (BON-6)
+
+`compare_models.js` is **not** wired into the main 16-node Cloud grading workflow. Use `POST /compare` on the enrichment API, or import a separate branch manually if needed.
 
 ---
 
@@ -104,6 +122,8 @@ If Gemini 404: change model URL to `gemini-3-flash-preview`.
 
 ```powershell
 docker compose up --build -d
+.\.venv\Scripts\python.exe n8n\build_workflow.py
+.\.venv\Scripts\python.exe scripts\import_selfhosted_workflow.py
 ```
 
 Import `n8n/hindsight_workflow.json`, configure credentials per `n8n/SETUP.md`, drop files in `incoming_docs/`.
@@ -119,7 +139,7 @@ Import `n8n/hindsight_workflow.json`, configure credentials per `n8n/SETUP.md`, 
 | **BON-3 Dashboard** | `dashboard/index.html`; optional live CSV via `?csv=` query param |
 | **BON-4 Retry** | Gemini 5× / 3s — verified by `audit_n8n_cloud.py` |
 | **BON-5 Semantic Search** | Apply `migrations/001_pgvector_incidents.sql`; set `SUPABASE_*` in `.env`; `POST /search` |
-| **BON-6 Compare** | `POST /compare` (Flash vs Pro); `compare_models.js` for n8n branch |
+| **BON-6 Compare** | `POST /compare` (Flash vs Pro); `compare_models.js` is API-only (not in main Cloud workflow) | `test_compare.py`; bonus node test |
 | **BON-7 Batch** | Form accepts `.zip`; `prepare.js` fans out; fixture `samples/batch_incidents.zip` |
 | **BON-8 Alerting** | `patch_cloud_workflow.py` — pages on SEV1, confidential, or escalate |
 

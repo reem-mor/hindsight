@@ -51,18 +51,38 @@ def aggregate_digest(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def build_digest_html(agg: dict[str, Any], window_hours: int = 24) -> str:
     def rows(counter: dict[str, int]) -> str:
         if not counter:
-            return "<li>none</li>"
-        return "".join(f"<li>{k}: {v}</li>" for k, v in sorted(counter.items()))
+            return '<li style="color:#64748b;">None in window</li>'
+        return "".join(
+            f'<li style="margin:4px 0;"><strong>{k}</strong> · {v}</li>'
+            for k, v in sorted(counter.items())
+        )
 
     files = agg.get("filenames") or []
-    file_list = "".join(f"<li>{f}</li>" for f in files) if files else "<li>none</li>"
+    file_list = (
+        "".join(f'<li style="margin:4px 0;">{f}</li>' for f in files)
+        if files
+        else '<li style="color:#64748b;">None in window</li>'
+    )
+    total = agg.get("total", 0)
+    sev1 = (agg.get("by_severity") or {}).get("SEV1", 0)
+    confidential = (agg.get("by_sensitivity") or {}).get("confidential", 0)
+    escalated = (agg.get("by_routing_tag") or {}).get("escalate", 0)
     return (
-        f"<h2>HINDSIGHT — Daily digest (last {window_hours}h)</h2>"
-        f"<p><b>Documents processed:</b> {agg.get('total', 0)}</p>"
-        f"<h3>By classification</h3><ul>{rows(agg.get('by_classification', {}))}</ul>"
-        f"<h3>By severity</h3><ul>{rows(agg.get('by_severity', {}))}</ul>"
-        f"<h3>By sensitivity</h3><ul>{rows(agg.get('by_sensitivity', {}))}</ul>"
-        f"<h3>By routing tag</h3><ul>{rows(agg.get('by_routing_tag', {}))}</ul>"
-        f"<h3>Recent files</h3><ul>{file_list}</ul>"
-        "<hr><p><i>Sent automatically by HINDSIGHT daily digest workflow</i></p>"
+        f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+        f'<title>HINDSIGHT Daily Digest</title></head>'
+        f'<body style="margin:0;background:#f1f5f9;font-family:Inter,Arial,sans-serif;">'
+        f'<table role="presentation" width="100%" style="padding:24px 12px;"><tr><td align="center">'
+        f'<table role="presentation" width="600" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;">'
+        f'<tr><td style="background:#0B0F14;color:#E6EDF3;padding:18px 24px;">'
+        f'<p style="margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8696A7;">'
+        f"HINDSIGHT · Daily digest</p>"
+        f'<h1 style="margin:6px 0 0;font-size:22px;">Last {window_hours} hours</h1></td></tr>'
+        f'<tr><td style="padding:20px 24px;">'
+        f"<p><b>Documents processed:</b> {total} · SEV1: {sev1} · Confidential: {confidential} · Escalated: {escalated}</p>"
+        f"<h2>By classification</h2><ul>{rows(agg.get('by_classification', {}))}</ul>"
+        f"<h2>By severity</h2><ul>{rows(agg.get('by_severity', {}))}</ul>"
+        f"<h2>By sensitivity</h2><ul>{rows(agg.get('by_sensitivity', {}))}</ul>"
+        f"<h2>By routing tag</h2><ul>{rows(agg.get('by_routing_tag', {}))}</ul>"
+        f"<h2>Recent files</h2><ul>{file_list}</ul>"
+        f"</td></tr></table></td></tr></table></body></html>"
     )

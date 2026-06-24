@@ -126,10 +126,11 @@ class SupabaseVectorStore:
             "sensitivity": sensitivity,
             "routing_tag": routing_tag,
             "summary": summary,
-            "processed_at": processed_at,
             "embedding": emb,
             "metadata": metadata or {},
         }
+        if processed_at:
+            row["processed_at"] = processed_at
         self._request(
             "/rest/v1/hindsight_incidents?on_conflict=document_id",
             row,

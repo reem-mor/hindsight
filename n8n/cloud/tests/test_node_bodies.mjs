@@ -5,8 +5,11 @@
  * No network, no n8n required: the n8n globals ($input, $) are mocked.
  */
 import { readFileSync } from 'fs';
+import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+
+const require = createRequire(import.meta.url);
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const NODES = join(__dirname, '..', 'nodes');
@@ -15,13 +18,13 @@ const parseSrc  = readFileSync(join(NODES, 'parse.js'), 'utf8');
 const FENCE = String.fromCharCode(96, 96, 96); // ```
 
 // Wrap a node body (which ends in `return out;`) into a callable async fn.
-const mkEnrich = () => new Function('$input', '$', `return (async () => { ${enrichSrc} })();`);
+const mkEnrich = () => new Function('require', '$input', '$', `return (async () => { ${enrichSrc} })();`);
 const mkParse  = () => new Function('$input', '$', `return (async () => { ${parseSrc} })();`);
 
 async function enrich(g, prep = []) {
   const $input = { all: () => [{ json: g }] };
   const $ = () => ({ all: () => prep });
-  return (await mkEnrich()($input, $))[0].json;
+  return (await mkEnrich()(require, $input, $))[0].json;
 }
 async function parseNode(geminiJson, prep) {
   const $input = { all: () => [{ json: geminiJson }] };
@@ -53,7 +56,7 @@ const VULN_CRITICAL = {
   let e = await enrich(VULN_CRITICAL);
   eq('sev1.computed', e.computed_severity, 'SEV1');
   ok('sev1.score_floor', e.severity_score >= 8, 'score=' + e.severity_score);
-  ok('sev1.review', e.severity_review === true);
+  ok('sev1.review', e.severity_review_needed === true);
   ok('sev1.dept', ['SecOps', 'NetSec'].includes(e.department), e.department);
   eq('sev1.jurisdictions', e.affected_jurisdictions, ['GLOBAL']);
   eq('sev1.sensitivity', e.sensitivity, 'confidential');
@@ -65,8 +68,8 @@ const VULN_CRITICAL = {
   // 2) Minor internal: no upgrade, no paging, internal ---------------------------
   e = await enrich({ affected_services: ['email-gateway'], affected_jurisdictions: [], severity: 'SEV4', incident_type: 'other', summary: 'minor phishing filter delay' });
   eq('minor.computed', e.computed_severity, 'SEV4');
-  ok('minor.noreview', e.severity_review === false);
-  eq('minor.sensitivity', e.sensitivity, 'internal');
+  ok('minor.noreview', e.severity_review_needed === false);
+  eq('minor.sensitivity', e.sensitivity, 'public');
   eq('minor.department', e.department, 'SecOps');
   ok('minor.no_page', !e.routing_tags.includes('page-oncall'));
 
@@ -88,7 +91,7 @@ const VULN_CRITICAL = {
   // 6) Severity DOWNGRADE also flags review (disagreement both directions) ----
   e = await enrich({ affected_services: ['email-gateway'], severity: 'SEV1', incident_type: 'other', summary: 'tiny blip' });
   ok('downgrade.lower', ['SEV3', 'SEV4'].includes(e.computed_severity), e.computed_severity);
-  ok('downgrade.review', e.severity_review === true);
+  ok('downgrade.review', e.severity_review_needed === true);
 
   // 7) Error-budget breach boundary (>= 50% of budget) -----------------------
   //    vulnerability-scanner SLO 99.0% -> 432 min monthly budget; 50% = 216 min.
@@ -110,6 +113,7 @@ const VULN_CRITICAL = {
   const fC = (await enrich({ incident_type: 'intrusion', affected_services: ['siem'], root_cause: 'disk full on the primary database node' })).recurrence_fingerprint;
   ok('fp.stable_order_independent', fA === fB, fA + ' vs ' + fB);
   ok('fp.distinct_for_diff_cause', fA !== fC);
+  eq('fp.sha1_parity', fA, '143e0b2a3e2c');
 
   // 10) Confidence penalties floor at 0 with full notes ----------------------
   e = await enrich({ confidence_score: 0.3, root_cause: '', action_items: [], affected_services: [], metrics: {}, incident_type: 'other', summary: 's' });
@@ -171,6 +175,7 @@ const VULN_CRITICAL = {
   const VALID_PARSE = {
     incident_title: 'X', severity: 'SEV3', incident_type: 'other',
     summary: 'test summary', sentiment: 'neutral',
+    entities: { people: [], teams: [], systems: [], dates: [], error_codes: [] },
     action_items: [{ action: 'review', owner: 'SecOps', priority: 'P2' }],
     confidence_score: 0.85,
   };
@@ -188,7 +193,13 @@ const VULN_CRITICAL = {
   await throws('parse.malformed_throws', () => parseNode({ candidates: [{ content: { parts: [{ text: 'definitely not json {' }] } }] }, {}));
   await throws('parse.missing_candidates_throws', () => parseNode({}, {}));
   await throws('parse.missing_fields_throws', () => parseNode({ candidates: [{ content: { parts: [{ text: '{"incident_title":"X","severity":"SEV3"}' }] } }] }, {}));
+  await throws('parse.missing_entities_throws', () => parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify({ ...VALID_PARSE, entities: undefined }) }] } }] }, {}));
   await throws('parse.bad_confidence_throws', () => parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify({ ...VALID_PARSE, confidence_score: 1.5 }) }] } }] }, {}));
+
+  p = await parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify({ ...VALID_PARSE, sentiment: 'INVALID' }) }] } }] }, {});
+  eq('parse.sentiment_default', p.sentiment, 'neutral');
+  p = await parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify({ ...VALID_PARSE, sentiment: 'negative' }) }] } }] }, {});
+  eq('parse.sentiment_valid', p.sentiment, 'negative');
 
   // ---- report ---------------------------------------------------------------
   const total = pass + failures.length;

@@ -2,18 +2,22 @@
 
 **Status:** automated suites green · **Scenario:** cyber incident logs · **Workflow:** `aYEv22StywIPL3Rq` (active)
 
+Assignment mapping: [ASSIGNMENT-MAP.md](ASSIGNMENT-MAP.md) · Bonus detail: [bonus-challenges.md](bonus-challenges.md)
+
 ## 1. Summary
 
 | Suite | What it proves | Checks | Result |
 |---|---|---:|:---:|
-| FastAPI `pytest` | Core + bonus endpoints (search, compare, digest, batch) | 60+ | ✅ |
-| Extractor `pytest` | Markdown/PDF extraction path (BON-1) | 2 | ✅ |
-| Cloud Code nodes | `enrich.js` + `parse.js` parity | 60 | ✅ |
+| FastAPI `pytest` | Core + bonus endpoints (search, compare, digest, batch) | 61 | ✅ |
+| Extractor `pytest` | Markdown/PDF/DOCX guards (BON-1) | 3 | ✅ |
+| Cloud `enrich` + `parse` | Parity with FastAPI brain | 64 | ✅ |
+| Cloud `prepare` | Upload guards, ZIP, MIME | 7 | ✅ |
+| Cloud `compose` | §7.2 row + §8.2 email + Sheet link | 7 | ✅ |
 | Bonus Code nodes | digest + compare (BON-2/6) | 5 | ✅ |
-| `audit_n8n_cloud.py` | Nodes, credentials, retry policy, activation | 1 report | ✅ |
+| `verify_all_bonuses.py` | All 8 bonuses + workflow activation | 10 | ✅ |
+| `docker_smoke_test.py` | Docker compose health + enrich smoke | 6 | ✅ |
+| `audit_n8n_cloud.py` | Nodes, credentials, retry, Gemini model | 1 report | ✅ |
 | Live E2E | Form → Gemini → Sheet → Gmail | exec 507/510/523/524 | ✅ |
-| Batch zip (BON-7) | Stored ZIP fan-out on n8n Cloud | exec 523 (2 files → 2 rows) | ✅ |
-| Live pgvector (BON-5) | Supabase `hindsight_incidents` + `POST /search` | sim=1.0 on indexed doc | ✅ |
 
 ## 2. Reproduce
 
@@ -22,48 +26,67 @@ cd c:\dev\hindsight
 .\.venv\Scripts\python.exe -m pytest services\enrichment-api -q
 .\.venv\Scripts\python.exe -m pytest tests\test_extractor.py -q
 node n8n\cloud\tests\test_node_bodies.mjs
+node n8n\cloud\tests\test_prepare.mjs
+node n8n\cloud\tests\test_compose.mjs
 node n8n\cloud\tests\test_bonus_nodes.mjs
+.\.venv\Scripts\python.exe scripts\verify_all_bonuses.py
+.\.venv\Scripts\python.exe scripts\docker_smoke_test.py
 .\.venv\Scripts\python.exe scripts\audit_n8n_cloud.py
+node scripts\render_architecture.mjs
+node scripts\capture_screenshots.mjs
+```
+
+Cloud deploy (mutating):
+
+```powershell
 .\.venv\Scripts\python.exe scripts\sync_n8n_cloud_nodes.py
 .\.venv\Scripts\python.exe scripts\patch_cloud_workflow.py
-.\.venv\Scripts\python.exe scripts\activate_n8n_cloud.py
-python scripts\build_digest_workflow.py
-node scripts\render_architecture.mjs
+.\.venv\Scripts\python.exe n8n\build_workflow.py
+.\.venv\Scripts\python.exe scripts\import_selfhosted_workflow.py
 ```
 
 ## 3. Bonus verification (all 8)
 
 | Bonus | Proof |
 |---|---|
-| **BON-1 Vision** | `tests/test_extractor.py`; `samples/vuln_scan_sev1_critical_rce.pdf` |
-| **BON-2 Daily Digest** | `test_digest.py`; `n8n/cloud/digest_workflow.json` |
-| **BON-3 Dashboard** | `dashboard/index.html`; `?csv=` param; `dashboard/fixtures/incidents.csv`; screenshot-dashboard |
+| **BON-1 Vision** | `tests/test_extractor.py`; self-hosted Vision node; Cloud PDF inline |
+| **BON-2 Daily Digest** | `test_digest.py`; `digest_aggregate.js`; `build_digest_workflow.py` |
+| **BON-3 Dashboard** | `dashboard/index.html`; `?csv=`; 📸 `screenshot-dashboard.png` |
 | **BON-4 Retry** | audit `Gemini retry policy (BON-4)` OK |
-| **BON-5 Semantic Search** | `test_search.py`; `migrations/001_pgvector_incidents.sql`; live Supabase project `zduaexkkhdnltyelvuwn`; `POST /search` |
-| **BON-6 Compare** | `test_compare.py`; `POST /compare`; `compare_models.js` |
-| **BON-7 Batch** | `test_batch.py`; `samples/batch_incidents.zip` (ZIP_STORED); exec **523** fan-out 2× |
-| **BON-8 Alerting** | `patch_cloud_workflow.py`; exec 507 Page On-Call |
+| **BON-5 Semantic Search** | `test_search.py`; `migrations/001_pgvector_incidents.sql` |
+| **BON-6 Compare** | `test_compare.py`; `POST /compare`; `compare_models.js` (API-only) |
+| **BON-7 Batch** | `test_batch.py`; `test_prepare.mjs` zip; `batch_incidents.zip` |
+| **BON-8 Alerting** | `patch_cloud_workflow.py`; `build_workflow.py`; exec 507 Page On-Call |
 
-## 4. Live E2E
+## 4. Edge cases
+
+See [edge-case-matrix.md](edge-case-matrix.md) — zero-byte, MIME mismatch, parse fences, retry idempotency, Cloud stateless recurrence, nested ZIP limits.
+
+## 5. Screenshots & diagrams
+
+| Asset | Path | How to refresh |
+|---|---|---|
+| Figure 1 architecture | `docs/architecture.png` | `node scripts/render_architecture.mjs` |
+| Dashboard (BON-3) | `docs/screenshot-dashboard.png` | `node scripts/capture_screenshots.mjs` |
+| FastAPI OpenAPI | `docs/screenshot-fastapi.png` | same |
+| Local n8n UI | `docs/screenshot-n8n-local.png` | same (Docker on :5678) |
+| Cloud form (grading intake) | `docs/screenshot-form-cloud.png` | Playwright MCP public form URL |
+
+## 6. Live E2E
 
 **Prerequisite:** Sheet tab **`Incidents`**; workflow **active**.
 
 1. Submit `samples/vuln_scan_critical_openssl.md` via form Production URL
-2. Confirm Sheet row + Page On-Call Gmail at `reem.mor3@gmail.com`
-3. Optional: submit `samples/siem_bruteforce_intrusion.md` for digest branch
+2. Confirm Sheet row + Page On-Call Gmail
+3. Optional: `samples/batch_incidents.zip` (BON-7)
 
 ```
 Live execution ID: 510 (success, 2026-06-23)
 Sample: samples/vuln_scan_critical_openssl.md
 Path: Page On-Call (SEV1) — CVSS 9.8, routing_tag escalate
 
-Batch zip (BON-7): exec 523 — Prepare Document fan-out 2 items (siem_alert.md, phishing_report.txt) → 2× Append to Registry
-Single-file verify: exec 524 — vuln_scan_critical_openssl.md
-Note: exec 522 failed (Gemini rate limit); use stored ZIP only on Cloud (no zlib).
+Batch zip (BON-7): exec 523 — 2 files → 2 rows
+Single-file verify: exec 524
 ```
 
-Self-hosted: `docker compose up --build -d` · drop PDF into `incoming_docs/` · extractor returns Vision image + CVSS fields (`extract_document.py` verified on `vuln_scan_sev1_critical_rce.pdf`).
-
-**Supabase (BON-5):** run `migrations/001_pgvector_incidents.sql` (includes table grants for `service_role`). Index via `POST /index` or `/enrich`; search via `POST /search`. With mock embeddings (no valid `GEMINI_API_KEY`), query text must overlap indexed text for similarity ≥ threshold.
-
-**Dashboard (BON-3):** publish Sheet CSV or open `dashboard/index.html?csv=http://127.0.0.1:8765/fixtures/incidents.csv` (fixture mirrors live exec 523/524 shape).
+Self-hosted: `docker compose up -d` → `import_selfhosted_workflow.py` → activate workflow → drop file in `incoming_docs/`.

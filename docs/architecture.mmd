@@ -1,25 +1,38 @@
 flowchart TB
-  subgraph input [Input detection]
-    CloudForm[n8n Cloud Form]
-    LocalWatch[incoming_docs watch]
+  subgraph input [Input detection P1]
+    CloudForm[n8n Cloud Form upload]
+    LocalWatch[incoming_docs folder watch]
+    ZipBatch[ZIP batch BON-7]
   end
-  subgraph extract [Extraction]
+  subgraph extract [Extraction P2]
     Prepare[Prepare Document / Python extractor]
-    Vision[Gemini Vision optional]
+    Vision[Gemini Vision BON-1]
   end
-  subgraph analyze [Gemini analysis]
-    Flash[Gemini 3 Flash JSON]
+  subgraph analyze [Gemini analysis P3]
+    Flash[gemini-3-flash-preview JSON]
     Parse[Parse Gemini JSON]
   end
-  subgraph decide [Enrichment brain]
-    Enrich[HINDSIGHT Enrich CVSS floor]
+  subgraph decide [Enrichment P4]
+    Enrich[HINDSIGHT Enrich CVSS floor sensitivity routing_tag]
   end
-  subgraph outputs [Three output channels]
-    Sheets[Google Sheets registry]
+  subgraph outputs [Three output channels P5 P6]
+    Sheets[Google Sheets 14 columns]
     Files[output_docs markdown]
     Gmail[Gmail notification]
   end
+  subgraph alert [BON-8 Alert routing]
+    IF{SEV1 OR confidential OR escalate?}
+    Page[Page On-Call high priority]
+    Digest[Postmortem Filed digest]
+  end
+  subgraph bonus [Bonus sidecars]
+    Dash[Live Dashboard BON-3]
+    Search[Semantic Search BON-5]
+    Compare[Multi-model Compare BON-6 API]
+    Daily[Daily Digest BON-2 cron]
+  end
   CloudForm --> Prepare
+  ZipBatch --> Prepare
   LocalWatch --> Prepare
   Prepare --> Vision
   Prepare --> Flash
@@ -27,4 +40,11 @@ flowchart TB
   Flash --> Parse --> Enrich
   Enrich --> Sheets
   Enrich --> Files
-  Enrich --> Gmail
+  Enrich --> IF
+  IF -->|yes| Page
+  IF -->|no| Digest
+  Page --> Gmail
+  Digest --> Gmail
+  Sheets --> Dash
+  Enrich --> Search
+  Sheets --> Daily

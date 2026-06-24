@@ -106,7 +106,7 @@ for (let idx = 0; idx < items.length; idx++) {
 
   const geminiBody = {
     contents: [ { role: "user", parts: parts } ],
-    generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+    generationConfig: { temperature: 0.2, responseMimeType: "application/json" }
   };
 
   out.push({ json: {
@@ -132,7 +132,7 @@ const geminiExtract = node({
     name: 'Gemini — Extract Incident',
     parameters: {
       method: 'POST',
-      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent',
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
       authentication: 'predefinedCredentialType',
       nodeCredentialType: 'googlePalmApi',
       sendBody: true,
@@ -689,7 +689,7 @@ const fileDigest = node({
 
 const noteHeader = sticky('## HINDSIGHT — Postmortem Intelligence (Cloud)\nInstitutional memory for incidents. Upload a postmortem → Gemini extracts it → the rubric re-scores severity → routed, SLO-costed, fingerprinted → filed to the registry + paged.\n\n**One-time setup:** open *Append to Registry* and pick your Google Sheet (tab named Incidents). Add a header row with the column names shown in the node. Credentials for Gemini/Sheets/Gmail are already bound. Emails go to reem.mor3@gmail.com (change in the two Gmail nodes).', [], { color: 4, width: 460, height: 240 });
 const note1 = sticky('### 1 — Intake & Vision\nForm upload. PDFs are sent to Gemini natively as inline_data, so embedded dashboard charts are read by real Vision — no separate OCR step.', [submitForm, prepareDoc], { color: 3 });
-const note2 = sticky('### 2 — Gemini extraction\ngemini-3-flash returns strict JSON (controlled vocabulary). Auth via the n8n Gemini credential, not a hardcoded key. Retries 5x on transient failures.', [geminiExtract, parseJson], { color: 5 });
+const note2 = sticky('### 2 — Gemini extraction\ngemini-3-flash-preview returns strict JSON (controlled vocabulary). Auth via the n8n Gemini credential, not a hardcoded key. Retries 5x on transient failures.', [geminiExtract, parseJson], { color: 5 });
 const note3 = sticky('### 3 — HINDSIGHT enrichment brain\nDeterministic re-scoring the LLM cannot be trusted to do: service-catalog routing, severity rubric, data-sensitivity, SLO error-budget burn, recurrence fingerprint, routing tags. Mirrors the repo FastAPI /enrich (swap this node for an HTTP call to host it).', [enrichBrain, composeOut], { color: 6 });
 const note4 = sticky('### 4 — File & Route\nAppend to the Google Sheets registry (source of truth). SEV1 pages on-call; everything else files a digest. Both carry the full enriched record + generated postmortem.', [appendRegistry, sevCheck, pageOncall, fileDigest], { color: 7 });
 

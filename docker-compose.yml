@@ -1,25 +1,30 @@
-# HINDSIGHT local stack: the enrichment microservice + a Python-capable n8n.
+# HINDSIGHT local stack — reads secrets from repo-root .env (never commit .env).
 #
-#   docker compose up --build
+#   copy .env.example .env   # fill GEMINI_API_KEY, SUPABASE_*, N8N_* as needed
+#   docker compose up --build -d
 #
 # n8n          → http://localhost:5678   (import n8n/hindsight_workflow.json)
 # enrichment   → http://localhost:8000   (GET /health, /metrics, /categories)
 #
-# The repo is mounted into n8n at /data, so the workflow's paths
-# (/data/incoming_docs, /data/output_docs, /data/extractors/...) resolve with no edits.
+# Repo mounted at /data inside n8n — paths incoming_docs/, output_docs/, extractors/ resolve.
 
 services:
   enrichment-api:
     build: ./services/enrichment-api
     container_name: hindsight-enrichment
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     environment:
-      HINDSIGHT_LOG_LEVEL: "INFO"
-      HINDSIGHT_JSON_LOGS: "true"
+      HINDSIGHT_LOG_LEVEL: ${HINDSIGHT_LOG_LEVEL:-INFO}
+      HINDSIGHT_JSON_LOGS: ${HINDSIGHT_JSON_LOGS:-true}
+      HINDSIGHT_REVIEW_THRESHOLD: ${HINDSIGHT_REVIEW_THRESHOLD:-0.7}
+      HINDSIGHT_BUDGET_BREACH_FRACTION: ${HINDSIGHT_BUDGET_BREACH_FRACTION:-0.5}
+      HINDSIGHT_CORS_ORIGINS: ${HINDSIGHT_CORS_ORIGINS:-*}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -28,30 +33,32 @@ services:
     restart: unless-stopped
 
   n8n:
-    build: ./n8n            # n8n + PyMuPDF + python-docx (see n8n/Dockerfile)
+    build: ./n8n
     container_name: hindsight-n8n
+    env_file:
+      - .env
     ports:
       - "5678:5678"
     environment:
       N8N_PORT: "5678"
       N8N_HOST: "localhost"
       NODE_ENV: "production"
-      GENERIC_TIMEZONE: "Asia/Jerusalem"
-      # Execute Command is what runs the Python extractor:
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Asia/Jerusalem}
       NODE_FUNCTION_ALLOW_EXTERNAL: "*"
+      # Passed through for Code nodes / scripts that read env (OAuth still lives in n8n UI)
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      HINDSIGHT_SHEET_ID: ${HINDSIGHT_SHEET_ID:-}
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./:/data                       # repo → /data inside n8n
+      - ./:/data
       - ./samples:/data/incoming_seed:ro
     depends_on:
-      - enrichment-api
+      enrichment-api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   n8n_data:
 
-# ── n8n Cloud note ───────────────────────────────────────────────────────────
-# n8n Cloud disables the Execute Command node, so the Python extractor only runs
-# on a self-hosted instance like the one above. On Cloud, swap the "Extract text
-# + images" node for n8n's native "Extract from File" node (text-only — the
-# Gemini Vision branch needs the self-hosted extractor to pull embedded images).
+# n8n Cloud note: Execute Command is disabled on Cloud — Python extractor runs only here.
+# On Cloud, Prepare Document handles text/PDF inline; Vision needs self-hosted extractor.

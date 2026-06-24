@@ -19,7 +19,7 @@ def test_empty_payload_is_safe(client):
     assert r.status_code == 200
     b = r.json()
     assert b["department"] == "SecOps"
-    assert b["sensitivity"] == "internal"
+    assert b["sensitivity"] == "public"
     assert b["computed_severity"] in ("SEV1", "SEV2", "SEV3", "SEV4")
     assert len(b["recurrence_fingerprint"]) == 12
 
