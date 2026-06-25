@@ -30,13 +30,7 @@ const prep = $("Prepare Document").all();
 const out = [];
 for (let idx = 0; idx < items.length; idx++) {
   const resp = items[idx].json || {};
-  let raw = "";
-  try {
-    raw = resp.candidates[0].content.parts[0].text || "";
-  } catch (e) {
-    raw = "";
-  }
-  raw = String(raw).trim();
+  let raw = String(resp?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
   // Strip only a WRAPPING ```json … ``` fence pair — never a global backtick
   // delete (that would corrupt inner SIEM command blocks in string values).
   if (raw.indexOf(FENCE) === 0) {

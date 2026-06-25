@@ -204,14 +204,11 @@ for (let idx = 0; idx < items.length; idx++) {
     continue;
   }
 
-  let geminiBody;
-  if (isPdf) {
-    geminiBody = buildGeminiBody("", true, buf.toString("base64"));
-  } else if (isText) {
-    geminiBody = buildGeminiBody(buf.toString("utf-8"), false, null);
-  } else {
-    throw new Error("Unsupported file type — expected .pdf, .md, .txt, .markdown, or .zip");
-  }
+  // Reached only for pdf/text here (zip continues above; the guard already rejected
+  // everything else), so this is an exhaustive two-way choice.
+  const geminiBody = isPdf
+    ? buildGeminiBody("", true, buf.toString("base64"))
+    : buildGeminiBody(buf.toString("utf-8"), false, null);
 
   out.push({ json: {
     correlationId: newCorrelationId(),
