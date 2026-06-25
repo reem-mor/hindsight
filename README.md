@@ -6,9 +6,11 @@
 
 **Enterprise document intelligence pipeline:** n8n · Google Gemini 3 Flash · FastAPI · Google Sheets · Gmail · Supabase pgvector
 
-[![tests](https://img.shields.io/badge/tests-186%20passing-brightgreen)](#verification)
+[![tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)](#verification)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](#technology-stack)
 [![n8n](https://img.shields.io/badge/n8n-Cloud%20%2B%20Docker-orange)](#deployment-paths)
+[![Gemini](https://img.shields.io/badge/Gemini-3%20Flash%20%2B%20Vision-4285F4)](#technology-stack)
+[![bonuses](https://img.shields.io/badge/bonus%20challenges-8%2F8-success)](#bonus-challenges)
 
 [Architecture](#architecture) · [Quick start](#quick-start) · [Course mapping](#course-requirement-mapping) · [Bonus challenges](#bonus-challenges) · [Docs](#documentation)
 
@@ -29,45 +31,38 @@ This mirrors real enterprise Document Intelligence systems used in SecOps, legal
 
 ## Architecture
 
-![Figure 1 — End-to-end pipeline](docs/architecture.png)
-
-<details>
-<summary>Mermaid — full pipeline (click to expand)</summary>
-
 ```mermaid
-flowchart TB
-  subgraph input [1. Input detection]
-    Form[Cloud form upload]
-    Watch[incoming_docs/ watcher]
+flowchart LR
+  subgraph input["1 · Input detection"]
+    Form["☁️ Cloud form upload"]
+    Watch["📂 incoming_docs/ watcher"]
   end
-  subgraph extract [2. Text + image extraction]
-    Prep[Prepare / Python extractor]
-    Vision[Gemini Vision optional]
+  subgraph extract["2 · Text + image extraction"]
+    Prep["Prepare · guards · ZIP fan-out"]
+    Vision["👁️ Gemini Vision<br/>(embedded charts)"]
   end
-  subgraph analyze [3. Gemini AI analysis]
-    Flash[Gemini 3 Flash JSON]
-    Parse[Parse + validate JSON]
+  subgraph analyze["3 · Gemini 3 Flash"]
+    Flash["HTTP · strict JSON<br/>temp 0.2 · retry 5×/3s"]
+    Parse["Parse + validate"]
   end
-  subgraph enrich [4. Metadata enrichment]
-    Brain[FastAPI or enrich.js]
+  subgraph brain["4 · Deterministic brain"]
+    Enrich["FastAPI /enrich · enrich.js<br/>CVSS floor → SEV · sensitivity · routing"]
   end
-  subgraph outputs [5–6. Output channels]
-    Sheets[Google Sheets registry]
-    Files[output_docs/ markdown]
-    Gmail[Gmail Page + Digest]
+  subgraph outputs["5–6 · Output channels"]
+    Sheets["📊 Google Sheets<br/>14-col Incidents"]
+    Files["📄 output_docs/<br/>JSON + Markdown"]
+    Gmail["📧 Gmail<br/>page · filed · digest"]
   end
   Form --> Prep
   Watch --> Prep
-  Prep --> Vision
+  Prep -->|"PDF inline_data"| Vision
   Prep --> Flash
   Vision --> Flash
-  Flash --> Parse --> Brain
-  Brain --> Sheets
-  Brain --> Files
-  Brain --> Gmail
+  Flash --> Parse --> Enrich
+  Enrich --> Sheets & Files & Gmail
 ```
 
-</details>
+> Rendered diagram (PNG): [`docs/architecture.png`](docs/architecture.png) · bonus-challenge diagrams: [`docs/bonus-challenges.md`](docs/bonus-challenges.md)
 
 | Layer | Component | Role |
 |---|---|---|
@@ -173,7 +168,40 @@ cd services\enrichment-api
 | `/digest/preview` | POST | Daily digest HTML preview (BON-2) |
 | `/metrics` | GET | Prometheus-style counters |
 
-Catalog: `services/enrichment-api/data/service_catalog.yaml`
+Catalog: `services/enrichment-api/data/service_catalog.yaml` · interactive docs: **http://localhost:8000/docs** ([screenshot](docs/screenshot-fastapi.png))
+
+### REST API in action
+
+**`POST /enrich`** — the LLM extracts, the service decides (CVSS 9.8 floors SEV3 → SEV1):
+
+```bash
+curl -s http://localhost:8000/enrich -H "Content-Type: application/json" -d '{
+  "incident_title": "Critical OpenSSL RCE on perimeter hosts",
+  "summary": "Nessus flagged CVE-2026-21841 (CVSS 9.8) on 23 internet-facing TLS hosts.",
+  "severity": "SEV3",
+  "incident_type": "vulnerability-scan",
+  "affected_services": ["nessus", "network"],
+  "cvss_score": 9.8,
+  "cve_ids": ["CVE-2026-21841"],
+  "action_items": [{"action": "Patch gateways", "owner": "NetSec", "priority": "P0"}]
+}'
+```
+```jsonc
+{
+  "document_id": "…uuid…",
+  "computed_severity": "SEV1",          // floored up from the author's SEV3
+  "severity_rationale": ["CVSS 9.8 (SEV1-class) (+5)", "severity floored to SEV1 by CVSS 9.8"],
+  "department": "SecOps",
+  "sensitivity": "confidential",
+  "routing_tag": "escalate",            // → high-priority page (BON-8)
+  "cvss_score": 9.8, "cve_ids": ["CVE-2026-21841"],
+  "confidence_score": 0.5, "routing_tags": ["auto-filed","exec-escalation","page-oncall", …]
+}
+```
+
+**`GET /health`** → `{"status":"ok", …}` · **`POST /sensitivity`** → `public | internal | confidential` · **`POST /compare`** Flash↔Pro (BON-6) · **`POST /search`** semantic (BON-5).
+
+The n8n **Gemini HTTP node** calls `POST …/models/gemini-3-flash:generateContent` with header `x-goog-api-key` (n8n credential, never hardcoded), `temperature: 0.2`, `responseMimeType: application/json`, and `retryOnFail` 5×/3s for 429s.
 
 ---
 
@@ -247,11 +275,34 @@ node scripts\e2e_cloud_form.mjs
 | Execution detail | [`docs/screenshot-execution.png`](docs/screenshot-execution.png) |
 | Google Sheet row | [`docs/screenshot-sheet.png`](docs/screenshot-sheet.png) |
 | Gmail notification | [`docs/screenshot-email.png`](docs/screenshot-email.png) |
-| Live dashboard | [`docs/screenshot-dashboard.png`](docs/screenshot-dashboard.png) |
-| FastAPI OpenAPI | [`docs/screenshot-fastapi.png`](docs/screenshot-fastapi.png) |
-| Local n8n | [`docs/screenshot-n8n-local.png`](docs/screenshot-n8n-local.png) |
+| Live dashboard (BON-3) | [`docs/screenshot-dashboard.png`](docs/screenshot-dashboard.png) |
+| FastAPI OpenAPI / REST | [`docs/screenshot-fastapi.png`](docs/screenshot-fastapi.png) |
+| Local n8n (Docker) | [`docs/screenshot-n8n-local.png`](docs/screenshot-n8n-local.png) |
+| Email — per-document (§8.2) | [`docs/screenshot-email-incident.png`](docs/screenshot-email-incident.png) |
+| Email — SEV1 alert (BON-8) | [`docs/screenshot-email-alert.png`](docs/screenshot-email-alert.png) |
+| Email — 24h digest (BON-2) | [`docs/screenshot-email-digest.png`](docs/screenshot-email-digest.png) |
+
+Email bodies are rendered from the **exact deployed node code** — regenerate the HTML + PNGs with:
+
+```powershell
+node scripts\render_email_samples.mjs       # → docs/email-samples/*.html (real compose.js / digest_aggregate.js)
+node scripts\capture_local_evidence.mjs     # → docs/*.png (emails, dashboard, FastAPI, local n8n) — Docker-aware
+```
 
 Evidence index: [`docs/VALIDATION.md`](docs/VALIDATION.md)
+
+### Live status — verified configured & working
+
+| Surface | Check | Result |
+|---|---|---|
+| **Cloud n8n** | `audit_n8n_cloud.py` — nodes, creds, model, retry, 14-col flatten | ✅ all OK |
+| **Cloud workflow** | Published/active · 6 clear sticky notes · Gemini/Sheets/Gmail bound | ✅ |
+| **Google Sheet** | `Incidents` tab · 14-column header · rows appended by live runs | ✅ |
+| **Docker stack** | `docker_smoke_test.py` — API health, `/enrich` CVSS floor, n8n UI | ✅ 5/5 |
+| **Local FastAPI** | `/health`, `/enrich`, `/sensitivity`, `/digest/preview` exercised | ✅ |
+| **Email format** | per-document · SEV1 alert · 24h digest rendered + screenshotted | ✅ |
+
+Sticky notes on the Cloud workflow are applied/refreshed with `scripts/add_cloud_sticky_notes.py`.
 
 ---
 
@@ -283,7 +334,9 @@ Security rule: [`.cursor/rules/secrets-and-mcp-security.mdc`](.cursor/rules/secr
 | `verify_all_bonuses.py` | 10-check bonus + activation verifier |
 | `docker_smoke_test.py` | Post-compose health + enrich smoke |
 | `import_selfhosted_workflow.py` | Import workflow into Docker n8n |
-| `capture_screenshots.mjs` | Regenerate docs screenshots |
+| `add_cloud_sticky_notes.py` | Apply the canonical sticky-note set to the Cloud workflow |
+| `render_email_samples.mjs` | Render the 3 Gmail bodies from real node code → `docs/email-samples/` |
+| `capture_local_evidence.mjs` | Docker-aware Playwright capture (emails, dashboard, FastAPI, n8n) |
 | `render_architecture.mjs` | Re-render `architecture.png` from `.mmd` |
 
 ---

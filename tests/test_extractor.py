@@ -78,6 +78,38 @@ def test_extractor_text_cp1252_fallback(tmp_path) -> None:
     assert chr(0x2013) in text  # 0x96 decoded to en dash
 
 
+def test_extractor_docx_happy_path(tmp_path) -> None:
+    """DOCX: paragraphs AND table cells must be extracted (postmortems use tables)."""
+    try:
+        import docx as docx_mod
+    except ImportError:
+        import pytest
+
+        pytest.skip("python-docx not installed")
+    path = tmp_path / "incident.docx"
+    d = docx_mod.Document()
+    d.add_paragraph("Intrusion summary: brute-force against the bastion host.")
+    table = d.add_table(rows=1, cols=2)
+    table.rows[0].cells[0].text = "CVE"
+    table.rows[0].cells[1].text = "CVE-2026-9001"
+    d.save(str(path))
+    data = _run(str(path))
+    assert data["ok"] is True
+    assert data["file_type"] == "docx"
+    assert "brute-force" in data["extracted_text"]
+    assert "CVE-2026-9001" in data["extracted_text"]  # table cell text
+
+
+def test_extractor_plain_txt_happy_path(tmp_path) -> None:
+    """TXT: plain UTF-8 log/export extracts cleanly with the .txt file_type."""
+    path = tmp_path / "alert.txt"
+    path.write_text("SIEM alert: 412 failed SSH logins from 203.0.113.5 in 5 minutes.", encoding="utf-8")
+    data = _run(str(path))
+    assert data["ok"] is True
+    assert data["file_type"] == "txt"
+    assert "failed SSH logins" in data["extracted_text"]
+
+
 def test_extractor_empty_docx_rejected(tmp_path) -> None:
     docx = tmp_path / "empty.docx"
     try:
