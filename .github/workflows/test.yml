@@ -48,7 +48,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install extractor deps
-        run: pip install pymupdf python-docx
+        run: pip install pytest pymupdf python-docx
       - name: Run extractor tests
         run: pytest tests/test_extractor.py -q
 
