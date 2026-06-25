@@ -37,6 +37,7 @@ jobs:
           node n8n/cloud/tests/test_prepare.mjs
           node n8n/cloud/tests/test_compose.mjs
           node n8n/cloud/tests/test_bonus_nodes.mjs
+          node n8n/cloud/tests/test_selfhosted_workflow.mjs
 
   extractor:
     name: Document extractor (pytest)

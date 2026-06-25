@@ -1,0 +1,15 @@
+# Treat binary artifacts as binary so Git never applies EOL/CRLF conversion
+# (auto-detection can otherwise corrupt committed PDFs, zips, and images).
+*.pdf  binary
+*.zip  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+
+# Keep shell/JS/Python/markdown line endings stable across platforms.
+*.sh   text eol=lf
+*.mjs  text eol=lf
+*.js   text eol=lf
+*.py   text eol=lf
+*.md   text

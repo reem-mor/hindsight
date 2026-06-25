@@ -59,6 +59,7 @@ def extract_pdf(path: str, image_dir: str) -> dict:
                 text_parts.append(page.get_text("text"))
                 for img_index, img in enumerate(page.get_images(full=True)):
                     xref = img[0]
+                    pix = None
                     try:
                         pix = fitz.Pixmap(doc, xref)
                         if pix.n - pix.alpha >= 4:  # CMYK/other → convert to RGB
@@ -66,10 +67,11 @@ def extract_pdf(path: str, image_dir: str) -> dict:
                         out = os.path.join(image_dir, f"{base}_p{page_index}_{img_index}.png")
                         pix.save(out)
                         images.append({"path": out, "page": page_index})
-                        pix = None
                     except Exception as exc:  # noqa: BLE001
                         # Don't fail the whole extraction on one bad image.
                         images.append({"path": None, "page": page_index, "error": str(exc)})
+                    finally:
+                        pix = None  # release native pixmap memory promptly
     except Exception as exc:  # noqa: BLE001
         # Corrupt / password-protected / non-PDF content: degrade to a clean,
         # structured error instead of crashing the workflow node.
@@ -92,13 +94,17 @@ def extract_docx(path: str) -> dict:
     except ImportError:
         return _err(os.path.basename(path), "docx", "python-docx not installed: pip install python-docx")
 
-    document = docx.Document(path)
-    parts = [p.text for p in document.paragraphs]
-    # Include table cell text — postmortems often use tables for timelines.
-    for table in document.tables:
-        for row in table.rows:
-            parts.append(" | ".join(cell.text for cell in row.cells))
-    text = "\n".join(parts).strip()
+    try:
+        document = docx.Document(path)
+        parts = [p.text for p in document.paragraphs]
+        # Include table cell text — postmortems often use tables for timelines.
+        for table in document.tables:
+            for row in table.rows:
+                parts.append(" | ".join(cell.text for cell in row.cells))
+        text = "\n".join(parts).strip()
+    except Exception as exc:  # noqa: BLE001
+        # Corrupt / password-protected / non-OOXML content: degrade to JSON.
+        return _err(os.path.basename(path), "docx", f"could not parse DOCX: {exc}")
     return {
         "filename": os.path.basename(path),
         "file_type": "docx",
@@ -110,8 +116,20 @@ def extract_docx(path: str) -> dict:
 
 
 def extract_text(path: str, file_type: str) -> dict:
-    with open(path, "r", encoding="utf-8", errors="replace") as fh:
-        text = fh.read().strip()
+    with open(path, "rb") as fh:
+        raw = fh.read()
+    # Try strict UTF-8 (BOM-tolerant) first, then Windows cp1252 (common for
+    # exported .txt/.log on Windows), then a lossy UTF-8 read as last resort.
+    text = None
+    for enc in ("utf-8-sig", "cp1252"):
+        try:
+            text = raw.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if text is None:
+        text = raw.decode("utf-8", errors="replace")
+    text = text.strip()
     return {
         "filename": os.path.basename(path),
         "file_type": file_type,
@@ -125,18 +143,18 @@ def extract_text(path: str, file_type: str) -> dict:
 def extract(path: str, image_dir: str) -> dict:
     if not os.path.isfile(path):
         return _err(os.path.basename(path), "unknown", f"file not found: {path}")
+    ext = os.path.splitext(path)[1].lower().lstrip(".")
     if os.path.getsize(path) == 0:
-        return _err(os.path.basename(path), os.path.splitext(path)[1].lstrip("."), "empty file (0 bytes)")
-    ext = os.path.splitext(path)[1].lower()
+        return _err(os.path.basename(path), ext, "empty file (0 bytes)")
     os.makedirs(image_dir, exist_ok=True)
-    if ext == ".pdf":
+    if ext == "pdf":
         result = extract_pdf(path, image_dir)
-    elif ext == ".docx":
+    elif ext == "docx":
         result = extract_docx(path)
-    elif ext in (".txt", ".md", ".markdown", ".log"):
-        result = extract_text(path, ext.lstrip("."))
+    elif ext in ("txt", "md", "markdown", "log"):
+        result = extract_text(path, ext)
     else:
-        return _err(os.path.basename(path), ext.lstrip("."), f"unsupported file type: {ext}")
+        return _err(os.path.basename(path), ext, f"unsupported file type: {ext}")
 
     # Skip text-less documents UNLESS they carry a usable image for the Vision
     # branch (a scanned/image-only PDF still has something to analyse). Only count
@@ -160,8 +178,16 @@ def main() -> int:
         help="Directory to write extracted images",
     )
     args = parser.parse_args()
-    result = extract(args.path, args.image_dir)
-    print(json.dumps(result, ensure_ascii=False))
+    try:
+        result = extract(args.path, args.image_dir)
+    except Exception as exc:  # noqa: BLE001
+        # Last line of defence: the n8n node must always receive JSON, never a
+        # Python traceback on stdout.
+        result = _err(os.path.basename(args.path), "unknown", f"unexpected error: {exc}")
+    payload = json.dumps(result, ensure_ascii=False)
+    # Emit UTF-8 explicitly so non-ASCII text can't crash on a cp1252 console.
+    sys.stdout.buffer.write((payload + "\n").encode("utf-8"))
+    sys.stdout.buffer.flush()
     return 0 if result.get("ok") else 1
 
 

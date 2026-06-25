@@ -10,7 +10,10 @@ for (let i = 0; i < items.length; i++) {
   const j = items[i].json || {};
   const row = {};
   for (let k = 0; k < KEYS.length; k++) {
-    row[KEYS[k]] = j[KEYS[k]];
+    const v = j[KEYS[k]];
+    // Always emit all 14 columns; coerce missing/null to "" so Sheets auto-map
+    // can't silently drop or shift a column.
+    row[KEYS[k]] = (v === undefined || v === null) ? "" : v;
   }
   out.push({ json: row });
 }

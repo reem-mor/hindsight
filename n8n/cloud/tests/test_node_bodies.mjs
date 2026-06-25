@@ -15,11 +15,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const NODES = join(__dirname, '..', 'nodes');
 const enrichSrc = readFileSync(join(NODES, 'enrich.js'), 'utf8');
 const parseSrc  = readFileSync(join(NODES, 'parse.js'), 'utf8');
+const sheetRowSrc = readFileSync(join(NODES, 'sheet_row.js'), 'utf8');
 const FENCE = String.fromCharCode(96, 96, 96); // ```
 
 // Wrap a node body (which ends in `return out;`) into a callable async fn.
 const mkEnrich = () => new Function('require', '$input', '$', `return (async () => { ${enrichSrc} })();`);
 const mkParse  = () => new Function('$input', '$', `return (async () => { ${parseSrc} })();`);
+const mkSheetRow = () => new Function('$input', '$', `return (async () => { ${sheetRowSrc} })();`);
+async function sheetRow(obj) {
+  const $input = { all: () => [{ json: obj }] };
+  return (await mkSheetRow()($input, () => ({ all: () => [] })))[0].json;
+}
 
 async function enrich(g, prep = []) {
   const $input = { all: () => [{ json: g }] };
@@ -87,6 +93,14 @@ const VULN_CRITICAL = {
   eq('sec.department', e.department, 'Security-IR');
   eq('sec.sensitivity', e.sensitivity, 'confidential');
   ok('sec.review', e.routing_tags.includes('severity-review'));
+
+  // 5b) Sensitivity regex must not false-positive on 'edge'/'budget'/'discharged' (parity with Python)
+  e = await enrich({ incident_type: 'degradation', affected_services: ['network'], affected_jurisdictions: [], severity: 'SEV4', summary: 'Edge CDN cache nodes degraded on staging; cache-refresh budget exhausted.' });
+  eq('edge.sensitivity', e.sensitivity, 'public');
+  e = await enrich({ incident_type: 'degradation', affected_services: ['internal-tooling'], affected_jurisdictions: [], severity: 'SEV4', summary: 'UPS battery discharged during a scheduled maintenance window; failover engaged.' });
+  eq('discharged.sensitivity', e.sensitivity, 'public');
+  e = await enrich({ incident_type: 'degradation', affected_services: ['internal-tooling'], affected_jurisdictions: [], severity: 'SEV4', summary: 'Regulator notified; potential fines pending after the customer data exposure.' });
+  eq('regulator.sensitivity', e.sensitivity, 'confidential');
 
   // 6) Severity DOWNGRADE also flags review (disagreement both directions) ----
   e = await enrich({ affected_services: ['email-gateway'], severity: 'SEV1', incident_type: 'other', summary: 'tiny blip' });
@@ -200,6 +214,17 @@ const VULN_CRITICAL = {
   eq('parse.sentiment_default', p.sentiment, 'neutral');
   p = await parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify({ ...VALID_PARSE, sentiment: 'negative' }) }] } }] }, {});
   eq('parse.sentiment_valid', p.sentiment, 'negative');
+
+  // ---- sheet_row (Flatten for Sheets): strict 14-col contract + safe defaults
+  const SHEET_KEYS = ["document_id","filename","file_type","processed_at","classification","department","sentiment","confidence_score","summary","routing_tag","sensitivity","action_items","cvss_score","cve_ids"];
+  let sr = await sheetRow({ document_id: 'd1', filename: 'f.md', classification: 'phishing' });
+  eq('sheetrow.exact_keys', Object.keys(sr).sort(), SHEET_KEYS.slice().sort());
+  ok('sheetrow.no_undefined_or_null', SHEET_KEYS.every(k => sr[k] !== undefined && sr[k] !== null), JSON.stringify(sr));
+  eq('sheetrow.missing_is_empty_string', sr.cvss_score, '');
+  eq('sheetrow.present_value_kept', sr.filename, 'f.md');
+  // extra keys outside the contract are dropped
+  sr = await sheetRow({ filename: 'g.md', computed_severity: 'SEV1', secret: 'x' });
+  ok('sheetrow.drops_extra_keys', sr.computed_severity === undefined && sr.secret === undefined);
 
   // ---- report ---------------------------------------------------------------
   const total = pass + failures.length;

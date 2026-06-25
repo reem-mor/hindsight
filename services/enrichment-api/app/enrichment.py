@@ -64,9 +64,9 @@ def classify_sensitivity(
 
     confidential_signals = [
         (f"security-class incident ({incident_type})", incident_type in SECURITY_SENSITIVE_TYPES),
-        ("PII / customer-data reference", bool(re.search(r"\bpii|customer data|personal data\b", text))),
-        ("monetary / payment exposure", bool(re.search(r"\bfunds?|payment|charge|refund|monetary\b", text))),
-        ("regulatory exposure", bool(re.search(r"\bregulator|ukgc|dge|fine\b", text))),
+        ("PII / customer-data reference", bool(re.search(r"\b(pii|customer data|personal data)\b", text))),
+        ("monetary / payment exposure", bool(re.search(r"\b(funds?|payments?|charges?|refunds?|monetary)\b", text))),
+        ("regulatory exposure", bool(re.search(r"\b(regulator\w*|ukgc|dge|fines?|fined)\b", text))),
         ("multi-jurisdiction", len([j for j in affected_jurisdictions if j and j.upper() != "GLOBAL"]) >= 2),
         ("high-severity CVE (CVSS >= 7.0)", cvss_score is not None and cvss_score >= 7.0),
         ("CVE identifiers cited", bool(cve_ids)),
@@ -128,7 +128,7 @@ def _adjust_confidence(g: GeminiResult, threshold: float) -> tuple[float, float,
     if not g.affected_services:
         penalty += 0.10
         notes.append("no affected services identified (-0.10)")
-    if g.metrics_present is False:  # see property below
+    if not g.metrics_present:
         penalty += 0.05
         notes.append("no timing metrics (-0.05)")
     adjusted = max(0.0, min(1.0, conf - penalty))
@@ -149,7 +149,8 @@ def enrich(g: GeminiResult, settings: Settings, catalog: ServiceCatalog) -> Enri
     jx = set(j.upper() for j in g.affected_jurisdictions if j)
     for e in resolved:
         jx.update(e.jurisdictions)
-    jx.discard("GLOBAL") if len(jx) > 1 else None
+    if len(jx) > 1:
+        jx.discard("GLOBAL")
     jurisdictions = sorted(jx)
 
     # Severity rubric.

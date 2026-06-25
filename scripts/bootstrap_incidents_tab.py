@@ -12,7 +12,8 @@ from urllib.request import Request, urlopen
 
 from n8n_cloud_api import SHEET_ID_DEFAULT, load_dotenv, api_request
 
-SHEETS_CRED_ID = "6CH1fQ50fz9t2M9G"
+# Resolved from N8N_SHEETS_CRED_ID after .env loads (no vault IDs hardcoded in repo).
+SHEETS_CRED_ID = os.environ.get("N8N_SHEETS_CRED_ID", "")
 HEADERS = [
     "document_id",
     "filename",
@@ -145,6 +146,11 @@ def main() -> int:
     key = os.environ.get("N8N_API_KEY", "")
     if not key:
         print("N8N_API_KEY missing")
+        return 1
+    global SHEETS_CRED_ID
+    SHEETS_CRED_ID = os.environ.get("N8N_SHEETS_CRED_ID", "").strip()
+    if not SHEETS_CRED_ID:
+        print("N8N_SHEETS_CRED_ID missing — set it in .env to the n8n Google Sheets credential ID")
         return 1
     sheet_id = os.environ.get("HINDSIGHT_SHEET_ID", SHEET_ID_DEFAULT).strip()
     if len(sys.argv) > 1:

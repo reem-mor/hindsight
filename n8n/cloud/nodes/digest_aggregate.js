@@ -132,7 +132,30 @@ function countBy(key) {
 
 }
 
+// Registry rows store only the 14 sheet columns (no computed_severity), so
+// recover a severity bucket from the stored CVSS / routing decision.
+function deriveSeverity(row) {
+  const direct = row.computed_severity || row.severity;
+  if (direct) return String(direct);
+  const c = Number(row.cvss_score);
+  if (isFinite(c) && c > 0) {
+    if (c >= 9.0) return "SEV1";
+    if (c >= 7.0) return "SEV2";
+    if (c >= 4.0) return "SEV3";
+    return "SEV4";
+  }
+  if (String(row.routing_tag || "") === "escalate") return "SEV1";
+  return "unknown";
+}
 
+function countBySeverity() {
+  const m = {};
+  for (let i = 0; i < recent.length; i++) {
+    const k = deriveSeverity(recent[i]);
+    m[k] = (m[k] || 0) + 1;
+  }
+  return m;
+}
 
 const agg = {
 
@@ -144,7 +167,7 @@ const agg = {
 
   by_routing_tag: countBy("routing_tag"),
 
-  by_severity: countBy("computed_severity"),
+  by_severity: countBySeverity(),
 
   filenames: recent.slice(0, 20).map(function (r) { return String(r.filename || ""); }),
 

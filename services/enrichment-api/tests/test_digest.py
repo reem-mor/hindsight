@@ -33,6 +33,17 @@ def test_aggregate_digest_counts() -> None:
     assert agg["by_severity"]["SEV1"] == 1
 
 
+def test_aggregate_digest_derives_severity_from_sheet_columns() -> None:
+    """Registry rows have only the 14 sheet columns (no computed_severity)."""
+    rows = [
+        {"classification": "vulnerability-scan", "routing_tag": "escalate", "cvss_score": 9.8},
+        {"classification": "intrusion", "routing_tag": "needs-review", "cvss_score": 5.0},
+        {"classification": "phishing", "routing_tag": "escalate", "cvss_score": ""},
+    ]
+    agg = aggregate_digest(rows)
+    assert agg["by_severity"] == {"SEV1": 2, "SEV3": 1}
+
+
 def test_build_digest_html_contains_sections() -> None:
     agg = aggregate_digest([{"classification": "intrusion", "filename": "a.md"}])
     html = build_digest_html(agg)

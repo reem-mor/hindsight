@@ -144,12 +144,25 @@ def main() -> int:
     except Exception as exc:
         ok("BON-2 Daily Email Digest", False, str(exc))
 
-    # BON-3 Dashboard
+    # BON-3 Dashboard — parse the CSV and confirm the columns the dashboard
+    # actually charts (cvss_score / sensitivity / routing_tag), not just a substring.
     total += 1
     dash = ROOT / "dashboard" / "index.html"
     fixture = ROOT / "dashboard" / "fixtures" / "incidents.csv"
-    bon3 = dash.is_file() and fixture.is_file() and "Chart.js" in dash.read_text(encoding="utf-8")
-    if ok("BON-3 Live Dashboard (HTML + CSV fixture)", bon3):
+    bon3 = False
+    bon3_detail = "missing files"
+    if dash.is_file() and fixture.is_file():
+        import csv as _csv
+
+        html = dash.read_text(encoding="utf-8")
+        with fixture.open(encoding="utf-8", newline="") as fh:
+            reader = _csv.DictReader(fh)
+            cols = set(reader.fieldnames or [])
+            rows = list(reader)
+        needed = {"cvss_score", "sensitivity", "routing_tag"}
+        bon3 = "Chart.js" in html and len(rows) >= 1 and needed.issubset(cols)
+        bon3_detail = f"rows={len(rows)} chart_cols_present={needed.issubset(cols)}"
+    if ok("BON-3 Live Dashboard (HTML wires Chart.js + CSV parses w/ chart cols)", bon3, bon3_detail):
         passed += 1
 
     # BON-4 Retry
@@ -208,19 +221,21 @@ def main() -> int:
     except Exception as exc:
         ok("BON-6 Multi-model Compare", False, str(exc))
 
-    # BON-7 Batch
+    # BON-7 Batch — unpack AND confirm every entry has decodable, non-empty text
+    # (proves the fan-out yields usable content, not just a file count).
     total += 1
     zip_path = ROOT / "samples" / "batch_incidents.zip"
-    bon7 = zip_path.is_file()
-    if bon7 and zip_path.is_file():
+    entries: list = []
+    bon7 = False
+    if zip_path.is_file():
         sys.path.insert(0, str(ROOT / "services" / "enrichment-api"))
         from app.batch import unpack_zip_bytes  # noqa: E402
 
         entries = unpack_zip_bytes(zip_path.read_bytes())
-        bon7 = len(entries) >= 2
-    else:
-        entries = []
-    if ok("BON-7 Multi-file Batch (ZIP unpack)", bon7, f"entries={len(entries) if bon7 else 0}"):
+        bon7 = len(entries) >= 2 and all(
+            e.get("char_count", 0) > 0 and e.get("extracted_text", "").strip() for e in entries
+        )
+    if ok("BON-7 Multi-file Batch (ZIP unpack w/ usable content)", bon7, f"entries={len(entries)}"):
         passed += 1
 
     # BON-8 Alerting

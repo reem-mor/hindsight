@@ -1,9 +1,26 @@
+import pytest
+
 from app.config import get_settings
 from app.routing import ServiceCatalog
 
 
 def _catalog():
     return ServiceCatalog(get_settings().service_catalog_path)
+
+
+# ---- catalog load hardening ------------------------------------------------ #
+def test_catalog_missing_file_raises_clear_error(tmp_path):
+    with pytest.raises(RuntimeError) as exc:
+        ServiceCatalog(tmp_path / "does_not_exist.yaml")
+    assert "catalog" in str(exc.value).lower()
+
+
+def test_catalog_entry_without_name_raises_clear_error(tmp_path):
+    bad = tmp_path / "bad_catalog.yaml"
+    bad.write_text("services:\n  - team: SecOps\n    tier: high\n", encoding="utf-8")
+    with pytest.raises(RuntimeError) as exc:
+        ServiceCatalog(bad)
+    assert "catalog" in str(exc.value).lower()
 
 
 # ---- routing --------------------------------------------------------------- #
@@ -122,6 +139,45 @@ def test_sensitivity_public_global_only_jurisdiction(client):
         },
     )
     assert r.json()["sensitivity"] == "public"
+
+
+def test_sensitivity_not_confidential_on_edge_and_budget_words(client):
+    """Regression: 'edge'/'budget' must not trip the regulatory regex (substring 'dge')."""
+    r = client.post(
+        "/sensitivity",
+        json={
+            "incident_type": "degradation",
+            "summary": "Edge CDN cache nodes degraded on staging; cache-refresh budget exhausted.",
+            "affected_jurisdictions": [],
+        },
+    )
+    assert r.json()["sensitivity"] == "public"
+
+
+def test_sensitivity_not_confidential_on_discharged(client):
+    """Regression: 'discharged' must not trip the monetary regex (substring 'charge')."""
+    r = client.post(
+        "/sensitivity",
+        json={
+            "incident_type": "degradation",
+            "summary": "UPS battery discharged during a scheduled maintenance window; failover engaged.",
+            "affected_jurisdictions": [],
+        },
+    )
+    assert r.json()["sensitivity"] == "public"
+
+
+def test_sensitivity_still_confidential_on_real_regulator(client):
+    """Guard: the fix must still catch genuine regulatory language."""
+    r = client.post(
+        "/sensitivity",
+        json={
+            "incident_type": "degradation",
+            "summary": "Regulator notified; potential fines pending after the customer data exposure.",
+            "affected_jurisdictions": [],
+        },
+    )
+    assert r.json()["sensitivity"] == "confidential"
 
 
 # ---- recurrence ------------------------------------------------------------ #

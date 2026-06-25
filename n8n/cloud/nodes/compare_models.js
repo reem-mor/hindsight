@@ -13,16 +13,14 @@ for (let idx = 0; idx < flashItems.length; idx++) {
       return;
     }
     if (a && typeof a === "object" && !Array.isArray(a)) {
-      const keys = Object.keys(a);
-      for (let i = 0; i < keys.length; i++) {
-        const k = keys[i];
+      // Walk the UNION of keys exactly once (mirrors Python compare.py); using
+      // `if (!a[k])` would re-diff falsy-but-present values and double-count.
+      const union = {};
+      Object.keys(a).forEach(function (k) { union[k] = 1; });
+      if (b && typeof b === "object") Object.keys(b).forEach(function (k) { union[k] = 1; });
+      Object.keys(union).sort().forEach(function (k) {
         diffField(a[k], b[k], path ? path + "." + k : k, diffs);
-      }
-      if (b && typeof b === "object") {
-        Object.keys(b).forEach(function (k) {
-          if (!a[k]) diffField(a[k], b[k], path ? path + "." + k : k, diffs);
-        });
-      }
+      });
     } else if (Array.isArray(a)) {
       if (JSON.stringify(a) !== JSON.stringify(b)) {
         diffs.push({ field: path, flash: a, pro: b, kind: "list_diff" });

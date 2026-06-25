@@ -35,6 +35,15 @@ ok('digest.total_24h', digestOut.digestAggregate.total === 2, String(digestOut.d
 ok('digest.html', digestOut.digestHtml.includes('Daily digest'));
 ok('digest.subject', digestOut.digestSubject.includes('2 incident'));
 
+// Realistic registry rows have only the 14 sheet columns (NO computed_severity).
+// Severity must be derived from the stored cvss_score / routing_tag.
+const sheetDigest = await runDigest([
+  { processed_at: recentTs, classification: 'vulnerability-scan', sensitivity: 'confidential', routing_tag: 'escalate', cvss_score: 9.8, filename: 'crit.md' },
+  { processed_at: recentTs, classification: 'intrusion', sensitivity: 'internal', routing_tag: 'needs-review', cvss_score: 5.0, filename: 'mid.md' },
+  { processed_at: recentTs, classification: 'phishing', sensitivity: 'confidential', routing_tag: 'escalate', cvss_score: '', filename: 'esc.md' },
+]);
+eq('digest.sheet_sev_from_cvss', sheetDigest.digestAggregate.by_severity, { SEV1: 2, SEV3: 1 });
+
 // ---- compare_models (BON-6) --------------------------------------------------
 const compareSrc = readFileSync(join(NODES, 'compare_models.js'), 'utf8');
 async function runCompare(flash, pro) {
@@ -54,6 +63,11 @@ const cmp = await runCompare(
 );
 ok('compare.agreement', cmp.classification_agreement === true);
 ok('compare.delta', Math.abs(cmp.confidence_delta - 0.1) < 0.001);
+
+// A differing falsy value (0) must produce exactly ONE diff, not a duplicate.
+const cmpDup = await runCompare({ confidence_score: 0, summary: 'a' }, { confidence_score: 5, summary: 'a' });
+const confDiffs = cmpDup.field_diffs.filter((d) => d.field === 'confidence_score');
+ok('compare.no_duplicate_diff', confDiffs.length === 1, 'count=' + confDiffs.length);
 
 // unzip fan-out covered by services/enrichment-api/tests/test_batch.py + prepare.js zip path
 

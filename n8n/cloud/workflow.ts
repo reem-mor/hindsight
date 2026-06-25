@@ -1,3 +1,10 @@
+// ============================================================================
+// NON-AUTHORITATIVE REFERENCE ONLY — DO NOT TREAT AS THE DEPLOYED WORKFLOW.
+// The source of truth for every deployed Cloud Code-node body is ../nodes/*.js,
+// synced via scripts/sync_n8n_cloud_nodes.py. This Workflow-SDK file is an
+// illustrative scaffold and may lag the live nodes (e.g. CVSS/cyber enrich
+// logic). Edit nodes/*.js, not this file. See n8n/cloud/README.md.
+// ============================================================================
 import { workflow, node, trigger, sticky, ifElse, expr, newCredential } from '@n8n/workflow-sdk';
 
 const submitForm = trigger({

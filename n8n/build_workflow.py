@@ -261,17 +261,32 @@ build_row = node(
             "classification:classification,department:e.department,sentiment:sentiment,confidence_score:e.confidence_score,"
             "summary:summary,routing_tag:routingTag,sensitivity:e.sensitivity,action_items:actionItems,"
             "cvss_score:e.cvss_score,cve_ids:(e.cve_ids||[]).join(', ')};\n"
-            "const emailHtml='<h2>Document Processed</h2><p><b>File:</b> '+esc(filename)+'</p>"
-            "+'<p><b>Classification:</b> '+esc(classification)+'</p><p><b>Sentiment:</b> '+esc(sentiment)+'</p>"
-            "+'<p><b>Department:</b> '+esc(e.department)+'</p><p><b>Sensitivity:</b> '+esc(e.sensitivity)+'</p>"
-            "+'<p><b>Routing tag:</b> '+esc(routingTag)+'</p><h3>Summary</h3><p>'+esc(summary)+'</p>"
-            "+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>';"
+            "const emailHtml='<h2>Document Processed</h2>'"
+            "+'<p><b>File:</b> '+esc(filename)+'</p>'"
+            "+'<p><b>Classification:</b> '+esc(classification)+'</p>'"
+            "+'<p><b>Sentiment:</b> '+esc(sentiment)+'</p>'"
+            "+'<p><b>Department:</b> '+esc(e.department)+'</p>'"
+            "+'<p><b>Sensitivity:</b> '+esc(e.sensitivity)+'</p>'"
+            "+'<p><b>Routing tag:</b> '+esc(routingTag)+'</p>'"
+            "+'<h3>Summary</h3><p>'+esc(summary)+'</p>'"
+            "+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>'"
+            "+'<hr><p><i>Sent automatically by n8n + Gemini 3 Document Analyst</i></p>';\n"
+            "const markdown='# '+e.computed_severity+' - '+classification+'\\n\\n'"
+            "+'| Field | Value |\\n|---|---|\\n'"
+            "+'| File | '+filename+' |\\n'"
+            "+'| Classification | '+classification+' |\\n'"
+            "+'| Department | '+e.department+' |\\n'"
+            "+'| Sensitivity | '+e.sensitivity+' |\\n'"
+            "+'| Routing tag | '+routingTag+' |\\n'"
+            "+'| CVSS | '+(e.cvss_score!=null?e.cvss_score:'n/a')+' |\\n\\n'"
+            "+'## Summary\\n'+summary+'\\n\\n## Action items\\n'+(actionItems||'(none)')+'\\n';\n"
             "const subjDigest='['+classification+'] New document processed: '+filename;\n"
             "const subjSev1='[CONFIDENTIAL ESCALATE] '+filename+' - '+e.department;\n"
             "const isSev1=e.computed_severity==='SEV1'||String(e.sensitivity)==='confidential'||routingTag==='escalate';\n"
-            "return [{json:{row,markdown:'# '+e.computed_severity+' - '+classification,is_sev1:isSev1,e,g,"
+            "const recordJson=JSON.stringify({...row,postmortem_markdown:markdown},null,2);\n"
+            "return [{json:{row,markdown,recordJson,is_sev1:isSev1,e,g,"
             "emailSubjectDigest:subjDigest,emailHtmlDigest:emailHtml,emailSubjectSev1:subjSev1,emailHtmlSev1:emailHtml,"
-            "out_path:`/data/output_docs/${e.document_id}.md`}}];"
+            "out_path:`/data/output_docs/${e.document_id}.md`,json_out_path:`/data/output_docs/${e.document_id}.json`}}];"
         ),
     },
 )
@@ -317,8 +332,32 @@ to_binary = node(
             "const buff = Buffer.from(j.markdown, 'utf8');\n"
             "return [{ json: { out_path: j.out_path },\n"
             "  binary: { data: { data: buff.toString('base64'),\n"
-            "    mimeType: 'text/markdown', fileName: j.document_id + '.md' } } }];"
+            "    mimeType: 'text/markdown', fileName: j.row.document_id + '.md' } } }];"
         ),
+    },
+)
+
+# §3.1 / §4 Step 6: write the processed JSON record alongside the markdown summary.
+json_to_binary = node(
+    "Record → JSON file", "n8n-nodes-base.code", 2, X[10] + 130, Y0 + 460,
+    {
+        "jsCode": (
+            "const j = $('Compose record + outputs').first().json;\n"
+            "const buff = Buffer.from(j.recordJson, 'utf8');\n"
+            "return [{ json: { json_out_path: j.json_out_path },\n"
+            "  binary: { data: { data: buff.toString('base64'),\n"
+            "    mimeType: 'application/json', fileName: j.row.document_id + '.json' } } }];"
+        ),
+    },
+)
+
+write_json_out = node(
+    "💾 Write JSON record", "n8n-nodes-base.readWriteFile", 1, X[11], Y0 + 330,
+    {
+        "operation": "write",
+        "fileName": "={{ $('Compose record + outputs').first().json.json_out_path }}",
+        "dataPropertyName": "data",
+        "options": {},
     },
 )
 
@@ -367,7 +406,8 @@ summary_mail["credentials"] = {"gmailOAuth2": {"id": "REPLACE_GMAIL", "name": "G
 
 nodes = [trigger, extract, parse_extract, has_images, vision, merge_vision,
          build_prompt, gemini, parse_gemini, enrich, build_row, prep_sheet,
-         sheets, to_binary, write_out, sev_if, page, summary_mail]
+         sheets, to_binary, write_out, json_to_binary, write_json_out,
+         sev_if, page, summary_mail]
 
 # ---------- connections ----------
 def conn(src, dst, src_out=0, dst_in=0):
@@ -390,6 +430,8 @@ links = [
     ("Flatten row", "📊 Append to registry"),
     ("Compose record + outputs", "Markdown → file"),
     ("Markdown → file", "💾 Write output doc"),
+    ("Compose record + outputs", "Record → JSON file"),
+    ("Record → JSON file", "💾 Write JSON record"),
     ("Compose record + outputs", "SEV1?"),
     ("SEV1?", "🚨 Page on-call (SEV1)", 0),
     ("SEV1?", "📧 Send digest", 1),

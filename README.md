@@ -6,7 +6,7 @@
 
 **Enterprise document intelligence pipeline:** n8n · Google Gemini 3 Flash · FastAPI · Google Sheets · Gmail · Supabase pgvector
 
-[![tests](https://img.shields.io/badge/tests-147%2B%20passing-brightgreen)](#verification)
+[![tests](https://img.shields.io/badge/tests-186%20passing-brightgreen)](#verification)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](#technology-stack)
 [![n8n](https://img.shields.io/badge/n8n-Cloud%20%2B%20Docker-orange)](#deployment-paths)
 

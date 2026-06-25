@@ -82,13 +82,19 @@ def call_gemini_pro_json(prompt_text: str, api_key: str | None = None) -> dict[s
         method="POST",
         headers={"Content-Type": "application/json", "x-goog-api-key": key},
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        data = json.loads(resp.read().decode())
-    raw = data["candidates"][0]["content"]["parts"][0]["text"]
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = json.loads(resp.read().decode())
+        raw = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (urllib.error.URLError, KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"malformed or unreachable Gemini Pro response: {exc}") from exc
     raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.split("```", 2)[1]
         if raw.lower().startswith("json"):
             raw = raw[4:]
         raw = raw.strip()
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Gemini Pro did not return valid JSON: {exc}") from exc

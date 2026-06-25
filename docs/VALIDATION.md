@@ -8,12 +8,13 @@ Assignment mapping: [ASSIGNMENT-MAP.md](ASSIGNMENT-MAP.md) · Bonus detail: [bon
 
 | Suite | What it proves | Checks | Result |
 |---|---|---:|:---:|
-| FastAPI `pytest` | Core + bonus endpoints (search, compare, digest, batch) | 61 | ✅ |
-| Extractor `pytest` | Markdown/PDF/DOCX guards (BON-1) | 3 | ✅ |
-| Cloud `enrich` + `parse` | Parity with FastAPI brain | 64 | ✅ |
+| FastAPI `pytest` | Core + bonus endpoints (search, compare, digest, batch) + sensitivity/catalog regressions | 67 | ✅ |
+| Extractor `pytest` | Markdown + real PDF/image (BON-1), corrupt-DOCX guard, cp1252 fallback | 5 | ✅ |
+| Cloud `enrich` + `parse` | Parity with FastAPI brain + sensitivity-regex + sheet_row safe defaults | 72 | ✅ |
 | Cloud `prepare` | Upload guards, ZIP, MIME | 7 | ✅ |
-| Cloud `compose` | §7.2 row + §8.2 email + Sheet link | 7 | ✅ |
-| Bonus Code nodes | digest + compare (BON-2/6) | 5 | ✅ |
+| Cloud `compose` | §7.2 row + §8.2 subject contract + Sheet link | 8 | ✅ |
+| Bonus Code nodes | digest severity-from-CVSS + compare diff (BON-2/6) | 7 | ✅ |
+| Self-hosted workflow | every Code-node parses + §8.2 subject + output_docs JSON & MD + retry | 20 | ✅ |
 | `verify_all_bonuses.py` | All 8 bonuses + workflow activation | 10 | ✅ |
 | `docker_smoke_test.py` | Docker compose health + enrich smoke | 6 | ✅ |
 | `audit_n8n_cloud.py` | Nodes, credentials, retry, Gemini model | 1 report | ✅ |
@@ -49,7 +50,7 @@ Cloud deploy (mutating):
 
 | Bonus | Proof |
 |---|---|
-| **BON-1 Vision** | `tests/test_extractor.py`; self-hosted Vision node; Cloud PDF inline |
+| **BON-1 Vision** | `tests/test_extractor.py` extracts `samples/vuln_scan_sev1_critical_rce.pdf` text **and asserts an embedded image is exported**; self-hosted Vision node; Cloud PDF inline |
 | **BON-2 Daily Digest** | `test_digest.py`; `digest_aggregate.js`; `build_digest_workflow.py` |
 | **BON-3 Dashboard** | `dashboard/index.html`; `?csv=`; 📸 `screenshot-dashboard.png` |
 | **BON-4 Retry** | audit `Gemini retry policy (BON-4)` OK |

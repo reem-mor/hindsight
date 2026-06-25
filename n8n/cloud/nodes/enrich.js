@@ -128,9 +128,9 @@ function classifySensitivity(incidentType, jurisdictions, entitiesBlob, summary,
   const realJx = (jurisdictions || []).filter(function (j) { return j && j.toUpperCase() !== "GLOBAL"; });
   const signals = [
     ["security-class incident (" + incidentType + ")", !!SECURITY_SENSITIVE_TYPES[incidentType]],
-    ["PII / customer-data reference", /\bpii|customer data|personal data\b/.test(text)],
-    ["monetary / payment exposure", /\bfunds?|payment|charge|refund|monetary\b/.test(text)],
-    ["regulatory exposure", /\bregulator|ukgc|dge|fine\b/.test(text)],
+    ["PII / customer-data reference", /\b(pii|customer data|personal data)\b/.test(text)],
+    ["monetary / payment exposure", /\b(funds?|payments?|charges?|refunds?|monetary)\b/.test(text)],
+    ["regulatory exposure", /\b(regulator\w*|ukgc|dge|fines?|fined)\b/.test(text)],
     ["multi-jurisdiction", realJx.length >= 2],
     ["high-severity CVE (CVSS >= 7.0)", cvss !== null && cvss !== undefined && Number(cvss) >= 7.0],
     ["CVE identifiers cited", Array.isArray(cveIds) && cveIds.length > 0],
@@ -241,6 +241,10 @@ for (let idx = 0; idx < items.length; idx++) {
   if (noOwner > 0) tags.push("unowned-actions");
   if (slo.budget_breach) tags.push("budget-breach");
   if (g.blameless_quality === "poor") tags.push("blameless-coaching");
+  // NOTE (intentional parity gap): the Python brain also emits "repeat-offender"
+  // + recurrence_seen_count from a process-local counter. n8n Code nodes are
+  // stateless per execution, so recurrence is tracked in the Sheets registry,
+  // not here. See docs/edge-case-matrix.md.
   const tagsUniq = Array.from(new Set(tags));
 
   let routingTag;

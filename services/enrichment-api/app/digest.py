@@ -29,14 +29,36 @@ def filter_last_24h(rows: list[dict[str, Any]], now: datetime | None = None) -> 
     return out
 
 
+def _derive_severity(row: dict[str, Any]) -> str:
+    """Registry rows store only the 14 sheet columns (no computed_severity), so
+    recover a severity bucket from the stored CVSS / routing decision."""
+    direct = row.get("computed_severity") or row.get("severity")
+    if direct:
+        return str(direct)
+    try:
+        cvss = float(row.get("cvss_score") or 0)
+    except (TypeError, ValueError):
+        cvss = 0.0
+    if cvss > 0:
+        if cvss >= 9.0:
+            return "SEV1"
+        if cvss >= 7.0:
+            return "SEV2"
+        if cvss >= 4.0:
+            return "SEV3"
+        return "SEV4"
+    if str(row.get("routing_tag", "")) == "escalate":
+        return "SEV1"
+    return "unknown"
+
+
 def aggregate_digest(rows: list[dict[str, Any]]) -> dict[str, Any]:
     by_class = Counter(str(r.get("classification", "other")) for r in rows)
     by_sensitivity = Counter(str(r.get("sensitivity", "internal")) for r in rows)
     by_routing = Counter(str(r.get("routing_tag", "auto-approved")) for r in rows)
     by_sev: Counter[str] = Counter()
     for r in rows:
-        sev = r.get("computed_severity") or r.get("severity") or "unknown"
-        by_sev[str(sev)] += 1
+        by_sev[_derive_severity(r)] += 1
 
     return {
         "total": len(rows),

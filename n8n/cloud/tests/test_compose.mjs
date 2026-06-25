@@ -46,7 +46,10 @@ const r = rows[0].json;
 
 ok('compose.sheet_columns', r.filename === 'vuln.md' && r.classification === 'vulnerability-scan');
 ok('compose.routing_tag', r.routing_tag === 'escalate');
-ok('compose.email_subject', r.emailSubjectDigest.includes('vuln.md'));
+// §8.2 requires the exact subject pattern: [classification] New document processed: filename
+ok('compose.email_subject', r.emailSubjectDigest === '[vulnerability-scan] New document processed: vuln.md', r.emailSubjectDigest);
+// BON-8 high-priority alert keeps its own distinct subject
+ok('compose.alert_subject', r.emailSubjectSev1.includes('ALERT') && r.emailSubjectSev1.includes('vuln.md'), r.emailSubjectSev1);
 ok('compose.sheet_link', r.emailHtmlDigest.includes('docs.google.com/spreadsheets'));
 ok('compose.document_id_in_email', r.emailHtmlDigest.includes('doc-test-001'));
 

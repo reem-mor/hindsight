@@ -50,6 +50,7 @@ copy .env.example .env
 | `N8N_API_KEY` | n8n Cloud → Settings → API |
 | `N8N_API_URL` | Defaults to `https://reemmor.app.n8n.cloud` (never overwritten by placeholder) |
 | `HINDSIGHT_SHEET_ID` | Optional; default `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk` |
+| `N8N_SHEETS_CRED_ID` | **Required only** by `setup_n8n_hindsight.py` / `bootstrap_incidents_tab.py` — the n8n Google Sheets credential **ID** (from the n8n vault, not a secret). These scripts fail fast if it is unset; no vault IDs are hardcoded in the repo. |
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest services\enrichment-api -q

@@ -338,7 +338,7 @@ for (let idx = 0; idx < enriched.length; idx++) {
 
 
 
-  const subjDigest = "[HINDSIGHT] " + sev + " · " + classification + " — " + filename;
+  const subjDigest = "[" + classification + "] New document processed: " + filename;
 
   const subjSev1 = "[HINDSIGHT ALERT] " + sev + " · " + sensitivity.toUpperCase() + " — " + filename;
 

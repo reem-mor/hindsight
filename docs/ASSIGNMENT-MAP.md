@@ -12,7 +12,7 @@ Legend: ✅ automated · 📸 screenshot · ⚙️ config · ✋ live credential
 | Cloud Gemini pipeline | n8n Cloud workflow `aYEv22StywIPL3Rq` | `audit_n8n_cloud.py` ✅ |
 | Structured extraction | `prompts/extraction_prompt.md`, `parse.js` | `test_node_bodies.mjs` ✅ |
 | Multi-modal (Vision) | Self-hosted PyMuPDF + Vision branch; Cloud PDF `inline_data` | `test_extractor.py` ✅ BON-1 |
-| Python microservice | `services/enrichment-api/` FastAPI | pytest 61+ ✅ |
+| Python microservice | `services/enrichment-api/` FastAPI | pytest 67 ✅ |
 | Google Sheets registry | Append to Registry + `sheet_row.js` flatten | audit + 📸 sheet |
 | Gmail notifications | Page On-Call + Postmortem Filed | audit + 📸 email |
 | Retries & logging | Gemini 5×/3s; enrichment 3× | audit BON-4 ✅ |
@@ -34,7 +34,7 @@ Legend: ✅ automated · 📸 screenshot · ⚙️ config · ✋ live credential
 | P3 Gemini JSON | HTTP POST Flash | `Gemini — Extract Incident` | same pattern | audit + parse tests ✅ |
 | P4 Metadata enrich | Student API | `HINDSIGHT Enrich` (`enrich.js`) | `POST /enrich` | pytest + node tests ✅ |
 | P5 Google Sheets | Append row | `Flatten for Sheets` → Append | Append node | 14-column contract ✅ |
-| P6 Output + email | Markdown + Gmail | `Compose Outputs` → Gmail | `output_docs/` write | `compose.js` + 📸 ✅ |
+| P6 Output + email | Markdown + Gmail | `Compose Outputs` → Gmail | `output_docs/` JSON **+** MD write (§3.1) | `compose.js` + `test_selfhosted_workflow.mjs` ✅ |
 
 ## §5 Gemini API (REQ-G*)
 

@@ -37,7 +37,8 @@ HEADERS = [
     "cve_ids",
 ]
 
-SHEETS_CRED_ID = "6CH1fQ50fz9t2M9G"  # Google Sheets Amdocs Course API (HINDSIGHT workflow)
+# Resolved from N8N_SHEETS_CRED_ID after .env loads (no vault IDs hardcoded in repo).
+SHEETS_CRED_ID = os.environ.get("N8N_SHEETS_CRED_ID", "")
 
 
 def patch_hindsight_sheet(base: str, key: str, sheet_id: str) -> None:
@@ -131,6 +132,12 @@ def main() -> int:
     key = os.environ.get("N8N_API_KEY", "")
     if not key:
         print("N8N_API_KEY missing")
+        return 1
+
+    global SHEETS_CRED_ID
+    SHEETS_CRED_ID = os.environ.get("N8N_SHEETS_CRED_ID", "").strip()
+    if not SHEETS_CRED_ID:
+        print("N8N_SHEETS_CRED_ID missing — set it in .env to the n8n Google Sheets credential ID")
         return 1
 
     sheet_id = os.environ.get("HINDSIGHT_SHEET_ID", "").strip()

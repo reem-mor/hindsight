@@ -107,12 +107,12 @@ def main() -> int:
     total += 1
     if ok(".env GEMINI_API_KEY present", has_gemini):
         passed += 1
-    total += 1
-    if ok(".env Supabase configured (BON-5)", has_supabase):
-        passed += 1
+    # Supabase (BON-5) is optional in dev — reported, but does NOT gate the smoke
+    # test. Every other check is required: a single real failure must exit non-zero.
+    ok(".env Supabase configured (BON-5, optional)", has_supabase)
 
-    print(f"\n=== Summary: {passed}/{total} checks passed ===\n")
-    return 0 if passed >= total - 1 else 1  # allow missing Supabase in dev
+    print(f"\n=== Summary: {passed}/{total} required checks passed · Supabase(optional)={has_supabase} ===\n")
+    return 0 if passed == total else 1
 
 
 if __name__ == "__main__":

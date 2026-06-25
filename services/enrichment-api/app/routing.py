@@ -44,20 +44,30 @@ class ServiceCatalog:
         self._load()
 
     def _load(self) -> None:
-        with open(self.path, "r", encoding="utf-8") as fh:
-            data = yaml.safe_load(fh) or {}
+        try:
+            with open(self.path, "r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+        except OSError as exc:
+            raise RuntimeError(f"service catalog could not be read at {self.path}: {exc}") from exc
+        except yaml.YAMLError as exc:
+            raise RuntimeError(f"service catalog is not valid YAML at {self.path}: {exc}") from exc
 
         self._defaults = data.get("defaults", {})
         self._type_routing = data.get("type_routing", {})
 
-        for raw in data.get("services", []):
-            entry = ServiceEntry(
-                name=raw["name"],
-                team=raw.get("team", self._defaults.get("team", "SRE-Platform")),
-                tier=raw.get("tier", self._defaults.get("tier", "standard")),
-                slo=float(raw.get("slo", self._defaults.get("slo", 99.9))),
-                jurisdictions=tuple(raw.get("jurisdictions", self._defaults.get("jurisdictions", ["GLOBAL"]))),
-            )
+        for idx, raw in enumerate(data.get("services", [])):
+            try:
+                entry = ServiceEntry(
+                    name=raw["name"],
+                    team=raw.get("team", self._defaults.get("team", "SRE-Platform")),
+                    tier=raw.get("tier", self._defaults.get("tier", "standard")),
+                    slo=float(raw.get("slo", self._defaults.get("slo", 99.9))),
+                    jurisdictions=tuple(raw.get("jurisdictions", self._defaults.get("jurisdictions", ["GLOBAL"]))),
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    f"service catalog entry #{idx} is invalid in {self.path}: {exc}"
+                ) from exc
             self._entries.append(entry)
             keys = [entry.name] + list(raw.get("aliases", []))
             for key in keys:
