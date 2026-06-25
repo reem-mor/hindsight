@@ -1,517 +1,295 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HINDSIGHT — Cyber Incident Intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HINDSIGHT · SOC Console — live incident registry</title>
+<!--
+  BON-3 Live Dashboard. Reads the published Google Sheets "Incidents" CSV and renders
+  live SecOps stats + charts. Pass ?csv=<published-sheet-csv-url>; falls back to the
+  committed fixture, then to an embedded sample. Every metric is derived ONLY from the
+  14 registry columns (severity is recovered from cvss_score / routing_tag).
+  Design: "SOC Console" — industrial-utilitarian, neon-on-black, monospace data.
+-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <style>
-  :root{
-    --bg:#0B0F14; --panel:#121821; --elev:#18212C; --line:#24303D; --line-soft:#1B232E;
-    --text:#E6EDF3; --muted:#8696A7; --dim:#5A6B7B;
-    --sev1:#FF4D5E; --sev2:#FF9F43; --sev3:#FFD23F; --sev4:#4DD0A7;
-    --accent:#4DD0A7;
-    --mono:'JetBrains Mono',ui-monospace,monospace;
-    --display:'Space Grotesk',system-ui,sans-serif;
-    --body:'Inter',system-ui,sans-serif;
+  :root {
+    --bg: #07090d;
+    --panel: #0d1117;
+    --panel-2: #11161f;
+    --line: #1b2532;
+    --ink: #e6edf3;
+    --muted: #7d8da3;
+    --faint: #4a586b;
+    --teal: #2de2c5;
+    --red: #ff3b5c;
+    --amber: #ffb020;
+    --yellow: #ffe14d;
+    --green: #3ddc91;
+    --violet: #8b7bff;
+    --display: "Space Grotesk", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
   }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0}
-  body{
-    background:var(--bg); color:var(--text); font-family:var(--body);
-    -webkit-font-smoothing:antialiased; line-height:1.5;
-    background-image:radial-gradient(1100px 500px at 78% -8%, rgba(77,208,167,.05), transparent 60%);
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--display); }
+  body {
+    background-image:
+      radial-gradient(1200px 600px at 80% -10%, rgba(45,226,197,.06), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(255,59,92,.06), transparent 60%);
+    min-height: 100vh;
   }
-  .wrap{max-width:1240px; margin:0 auto; padding:0 24px 72px}
+  a { color: var(--teal); text-decoration: none; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 22px 22px 60px; }
 
-  /* ---------- header ---------- */
-  header{padding:30px 0 0}
-  .topbar{display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap}
-  .brand{display:flex; align-items:baseline; gap:14px}
-  .logo{font-family:var(--display); font-weight:700; font-size:30px; letter-spacing:-.02em}
-  .logo .dot{color:var(--accent)}
-  .tagline{font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:.04em}
-  .meta{display:flex; gap:26px; align-items:center}
-  .meta .stat{text-align:right}
-  .meta .stat .v{font-family:var(--mono); font-size:13px; color:var(--text)}
-  .meta .stat .k{font-family:var(--mono); font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.12em}
-  .live{display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.06em}
-  .live .led{width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 0 rgba(77,208,167,.6)}
-  @media (prefers-reduced-motion:no-preference){ .live .led{animation:beat 2.4s infinite} }
-  @keyframes beat{0%{box-shadow:0 0 0 0 rgba(77,208,167,.5)}70%{box-shadow:0 0 0 7px rgba(77,208,167,0)}100%{box-shadow:0 0 0 0 rgba(77,208,167,0)}}
+  /* ---- header ---- */
+  header { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand h1 { font-size: 20px; letter-spacing: .14em; margin: 0; font-weight: 700; }
+  .brand .sub { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .08em; }
+  .spacer { flex: 1; }
+  .live { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--teal); letter-spacing: .12em; text-transform: uppercase; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 0 rgba(45,226,197,.7); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(45,226,197,.55)} 70%{box-shadow:0 0 0 9px rgba(45,226,197,0)} 100%{box-shadow:0 0 0 0 rgba(45,226,197,0)} }
+  .src { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
 
-  /* ---------- reliability pulse (signature) ---------- */
-  .pulse{margin:22px 0 6px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(180deg,#10161E,#0D1219); padding:0; overflow:hidden; position:relative}
-  .pulse-head{display:flex; justify-content:space-between; align-items:center; padding:11px 16px 0}
-  .pulse-head .lbl{font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim)}
-  .pulse-head .legend{display:flex; gap:14px}
-  .pulse-head .legend span{font-family:var(--mono); font-size:10px; color:var(--muted); display:inline-flex; align-items:center; gap:5px}
-  .pulse-head .legend i{width:8px; height:8px; border-radius:2px; display:inline-block}
-  .pulse svg{display:block; width:100%; height:96px}
-  .grid-line{stroke:var(--line-soft); stroke-width:1}
-  .spike{cursor:pointer; transition:opacity .15s}
-  .spike:hover{opacity:.65}
-  .baseline{stroke:var(--accent); stroke-width:1.5; fill:none; opacity:.55}
-  @media (prefers-reduced-motion:no-preference){
-    .baseline{stroke-dasharray:2000; stroke-dashoffset:2000; animation:draw 1.6s ease-out forwards}
-  }
-  @keyframes draw{to{stroke-dashoffset:0}}
-  .ptip{position:absolute; pointer-events:none; background:#0A0E13; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-family:var(--mono); font-size:11px; color:var(--text); opacity:0; transition:opacity .12s; white-space:nowrap; z-index:5; box-shadow:0 8px 24px rgba(0,0,0,.5); transform:translateX(-50%)}
-  .ptip b{color:var(--accent)}
+  /* ---- filters ---- */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 18px; }
+  .chip { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: .15s; }
+  .chip:hover { color: var(--ink); border-color: #2b3a4d; }
+  .chip[aria-pressed="true"] { color: var(--bg); background: var(--teal); border-color: var(--teal); font-weight: 600; }
+  .chip.red[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: #fff; }
 
-  /* ---------- kpi row ---------- */
-  .kpis{display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin:18px 0 26px}
-  .kpi{border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:16px 16px 14px; position:relative; overflow:hidden}
-  .kpi::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); opacity:.0}
-  .kpi.crit::before{background:var(--sev1); opacity:.9}
-  .kpi.warn::before{background:var(--sev2); opacity:.9}
-  .kpi .k{font-family:var(--mono); font-size:10px; letter-spacing:.13em; text-transform:uppercase; color:var(--muted)}
-  .kpi .v{font-family:var(--display); font-weight:600; font-size:34px; letter-spacing:-.02em; margin-top:8px; line-height:1; font-variant-numeric:tabular-nums}
-  .kpi .v small{font-size:15px; color:var(--muted); font-weight:500; margin-left:3px}
-  .kpi .sub{font-family:var(--mono); font-size:11px; color:var(--dim); margin-top:7px}
-  .kpi .sub .up{color:var(--sev1)} .kpi .sub .down{color:var(--sev4)}
+  /* ---- KPI row ---- */
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .kpi { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: 14px; padding: 16px 16px 14px; position: relative; overflow: hidden; }
+  .kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--teal)); }
+  .kpi .label { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  .kpi .val { font-size: 34px; font-weight: 700; margin-top: 8px; line-height: 1; color: var(--accent, var(--ink)); font-variant-numeric: tabular-nums; }
+  .kpi .meta { font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-top: 7px; }
 
-  /* ---------- charts ---------- */
-  .charts{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:26px}
-  .card{border:1px solid var(--line); border-radius:14px; background:var(--panel); padding:18px 18px 16px}
-  .card h3{margin:0 0 2px; font-family:var(--display); font-weight:600; font-size:15px; letter-spacing:-.01em}
-  .card .hint{font-family:var(--mono); font-size:10px; color:var(--dim); letter-spacing:.04em; margin-bottom:14px}
-  .canvas-box{position:relative; height:230px}
-  .donut-box{position:relative; height:230px; display:flex; align-items:center; justify-content:center}
-  .donut-center{position:absolute; text-align:center; pointer-events:none}
-  .donut-center .n{font-family:var(--display); font-weight:600; font-size:30px; line-height:1}
-  .donut-center .l{font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; margin-top:3px}
+  /* ---- charts grid ---- */
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; margin-top: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-height: 0; }
+  .card.span4 { grid-column: span 4; } .card.span6 { grid-column: span 6; }
+  .card.span8 { grid-column: span 8; } .card.span12 { grid-column: span 12; }
+  .card h2 { font-size: 13px; letter-spacing: .06em; margin: 0 0 2px; font-weight: 600; }
+  .card .hint { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-bottom: 12px; }
+  .chartbox { position: relative; height: 210px; }
 
-  /* ---------- registry ---------- */
-  .registry{border:1px solid var(--line); border-radius:14px; background:var(--panel); overflow:hidden}
-  .reg-head{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 20px 14px; flex-wrap:wrap}
-  .reg-head h3{margin:0; font-family:var(--display); font-weight:600; font-size:16px}
-  .chips{display:flex; gap:8px; flex-wrap:wrap}
-  .chip{font-family:var(--mono); font-size:11px; letter-spacing:.04em; color:var(--muted); background:transparent; border:1px solid var(--line); padding:6px 12px; border-radius:999px; cursor:pointer; transition:all .14s}
-  .chip:hover{border-color:var(--dim); color:var(--text)}
-  .chip[aria-pressed="true"]{background:var(--elev); color:var(--text); border-color:var(--dim)}
-  .chip[data-sev="SEV1"][aria-pressed="true"]{border-color:var(--sev1); color:var(--sev1)}
-  .chip[data-sev="SEV2"][aria-pressed="true"]{border-color:var(--sev2); color:var(--sev2)}
-  .chip[data-sev="SEV3"][aria-pressed="true"]{border-color:var(--sev3); color:var(--sev3)}
-  .tbl-scroll{overflow-x:auto}
-  table{width:100%; border-collapse:collapse; min-width:760px}
-  thead th{font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--dim); text-align:left; padding:10px 16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); font-weight:500; white-space:nowrap}
-  tbody td{padding:13px 16px; border-bottom:1px solid var(--line-soft); font-size:13px; vertical-align:top}
-  tbody tr:hover{background:#0F151D}
-  .sev-badge{font-family:var(--mono); font-weight:700; font-size:11px; padding:3px 8px; border-radius:5px; letter-spacing:.03em; display:inline-block}
-  .sev-SEV1{background:rgba(255,77,94,.13); color:var(--sev1)}
-  .sev-SEV2{background:rgba(255,159,67,.13); color:var(--sev2)}
-  .sev-SEV3{background:rgba(255,210,63,.12); color:var(--sev3)}
-  .sev-SEV4{background:rgba(77,208,167,.12); color:var(--sev4)}
-  .ttl{font-weight:500; color:var(--text)}
-  .ttl .sum{display:block; color:var(--muted); font-size:11.5px; font-weight:400; margin-top:3px; max-width:340px}
-  .svc{font-family:var(--mono); font-size:11px; color:var(--muted)}
-  .mttr{font-family:var(--mono); font-size:13px; color:var(--text); font-variant-numeric:tabular-nums}
-  .st{font-family:var(--mono); font-size:11px; letter-spacing:.03em}
-  .st.resolved{color:var(--sev4)} .st.monitoring{color:var(--sev3)} .st.open{color:var(--sev1)}
-  .tags{display:flex; gap:5px; flex-wrap:wrap; max-width:220px}
-  .tag{font-family:var(--mono); font-size:9.5px; color:var(--dim); border:1px solid var(--line); border-radius:4px; padding:2px 6px; letter-spacing:.03em}
-  .tag.hot{color:var(--sev1); border-color:rgba(255,77,94,.3)}
-  .tag.rep{color:var(--sev2); border-color:rgba(255,159,67,.3)}
-  .reg-foot{padding:13px 20px; font-family:var(--mono); font-size:11px; color:var(--dim); border-top:1px solid var(--line)}
-
-  /* ---------- footer / source ---------- */
-  .source{margin-top:22px; display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px; color:var(--dim); flex-wrap:wrap}
-  .source code{background:var(--elev); border:1px solid var(--line); padding:2px 7px; border-radius:5px; color:var(--muted)}
-  .banner{display:none; margin:14px 0 0; padding:11px 14px; border-radius:10px; border:1px solid rgba(255,159,67,.35); background:rgba(255,159,67,.07); font-family:var(--mono); font-size:11.5px; color:var(--sev2)}
-
-  a.link{color:var(--accent); text-decoration:none; border-bottom:1px solid rgba(77,208,167,.3)}
-
-  @media (max-width:980px){ .kpis{grid-template-columns:repeat(2,1fr)} .charts{grid-template-columns:1fr} .meta{display:none} }
-  @media (max-width:520px){ .kpis{grid-template-columns:1fr} .logo{font-size:24px} }
-
-  :focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+  /* ---- registry table ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead th { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #141b25; vertical-align: top; }
+  tbody tr:hover { background: #0f151e; }
+  .tablebox { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
+  .sev { font-family: var(--mono); font-weight: 600; font-size: 11px; padding: 2px 8px; border-radius: 6px; display: inline-block; }
+  .sev.SEV1 { color: var(--red); background: rgba(255,59,92,.13); }
+  .sev.SEV2 { color: var(--amber); background: rgba(255,176,32,.13); }
+  .sev.SEV3 { color: var(--yellow); background: rgba(255,225,77,.12); }
+  .sev.SEV4 { color: var(--green); background: rgba(61,220,145,.12); }
+  .sev.NA   { color: var(--faint); background: rgba(74,88,107,.15); }
+  .tag { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+  .tag.conf { color: var(--red); } .tag.esc { color: var(--amber); }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .empty { color: var(--faint); padding: 30px; text-align: center; font-family: var(--mono); font-size: 12px; }
+  footer { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--faint); display: flex; gap: 18px; flex-wrap: wrap; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2,1fr); } .card.span4,.card.span6,.card.span8 { grid-column: span 12; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-
   <header>
-    <div class="topbar">
-      <div>
-        <div class="brand">
-          <span class="logo">HINDSIGHT<span class="dot">.</span></span>
-          <span class="tagline">cyber incident intelligence · SIEM · vuln scans · phishing</span>
-        </div>
-      </div>
-      <div class="meta">
-        <div class="stat"><div class="v" id="m-window">—</div><div class="k">window</div></div>
-        <div class="stat"><div class="v" id="m-updated">—</div><div class="k">last sync</div></div>
-        <div class="stat"><div class="live"><span class="led"></span><span id="m-src">sample feed</span></div></div>
-      </div>
+    <div class="brand">
+      <h1>HINDSIGHT</h1>
+      <span class="sub">SOC&nbsp;CONSOLE · cyber incident registry</span>
     </div>
-
-    <!-- signature: reliability pulse -->
-    <div class="pulse">
-      <div class="pulse-head">
-        <span class="lbl">reliability pulse · severity over time</span>
-        <span class="legend">
-          <span><i style="background:#FF4D5E"></i>SEV1</span>
-          <span><i style="background:#FF9F43"></i>SEV2</span>
-          <span><i style="background:#FFD23F"></i>SEV3</span>
-        </span>
-      </div>
-      <svg id="pulse" viewBox="0 0 1000 96" preserveAspectRatio="none" role="img" aria-label="Incident severity timeline"></svg>
-      <div class="ptip" id="ptip"></div>
-    </div>
+    <span class="spacer"></span>
+    <span class="live"><span class="dot"></span><span id="live-label">LIVE</span></span>
+    <span class="src" id="src">source: …</span>
   </header>
 
-  <div class="banner" id="banner"></div>
+  <div class="filters" id="filters" role="group" aria-label="severity filter"></div>
 
-  <section class="kpis" id="kpis"></section>
+  <div class="kpis" id="kpis"></div>
 
-  <section class="charts">
-    <div class="card">
-      <h3>Severity mix</h3>
-      <div class="hint">where the fire actually was — by computed severity</div>
-      <div class="donut-box">
-        <canvas id="c-sev"></canvas>
-        <div class="donut-center"><div class="n" id="sev-total">0</div><div class="l">incidents</div></div>
+  <div class="grid">
+    <div class="card span4"><h2>Severity mix</h2><div class="hint">// from CVSS band · escalate→SEV1</div><div class="chartbox"><canvas id="c-sev"></canvas></div></div>
+    <div class="card span4"><h2>Data sensitivity</h2><div class="hint">// public · internal · confidential</div><div class="chartbox"><canvas id="c-sens"></canvas></div></div>
+    <div class="card span4"><h2>Routing decisions</h2><div class="hint">// SecOps triage rubric</div><div class="chartbox"><canvas id="c-route"></canvas></div></div>
+    <div class="card span6"><h2>Incident types</h2><div class="hint">// classification</div><div class="chartbox"><canvas id="c-type"></canvas></div></div>
+    <div class="card span6"><h2>CVSS distribution</h2><div class="hint">// base-score buckets across the estate</div><div class="chartbox"><canvas id="c-cvss"></canvas></div></div>
+    <div class="card span12">
+      <h2>Incident registry <span class="mono" id="reg-count" style="color:var(--faint);font-size:12px"></span></h2>
+      <div class="hint">// one row per processed document · click a severity chip above to filter</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Severity</th><th>Document</th><th>Type</th><th>Dept</th><th>Sensitivity</th><th>Routing</th><th>CVSS</th><th>CVE</th><th>Processed</th></tr></thead>
+          <tbody id="reg"></tbody>
+        </table>
       </div>
     </div>
-    <div class="card">
-      <h3>Time to resolve</h3>
-      <div class="hint">minutes per incident, oldest → newest · is the org getting faster?</div>
-      <div class="canvas-box"><canvas id="c-mttr"></canvas></div>
-    </div>
-    <div class="card">
-      <h3>Top failing services</h3>
-      <div class="hint">blast-radius frequency — where to spend reliability budget</div>
-      <div class="canvas-box"><canvas id="c-svc"></canvas></div>
-    </div>
-    <div class="card">
-      <h3>Failure modes</h3>
-      <div class="hint">how incidents start — the recurring shapes of failure</div>
-      <div class="canvas-box"><canvas id="c-type"></canvas></div>
-    </div>
-    <div class="card">
-      <h3>Data sensitivity</h3>
-      <div class="hint">confidential exposure across the estate — the compliance lens</div>
-      <div class="donut-box">
-        <canvas id="c-sens"></canvas>
-        <div class="donut-center"><div class="n" id="sens-total">0</div><div class="l">confidential</div></div>
-      </div>
-    </div>
-    <div class="card">
-      <h3>Routing decisions</h3>
-      <div class="hint">escalate · needs-review · auto-approved — the SecOps triage rubric</div>
-      <div class="canvas-box"><canvas id="c-route"></canvas></div>
-    </div>
-  </section>
-
-  <section class="registry">
-    <div class="reg-head">
-      <h3>Incident registry</h3>
-      <div class="chips" id="chips" role="group" aria-label="Filter by severity">
-        <button class="chip" data-sev="ALL" aria-pressed="true">All</button>
-        <button class="chip" data-sev="SEV1" aria-pressed="false">SEV1</button>
-        <button class="chip" data-sev="SEV2" aria-pressed="false">SEV2</button>
-        <button class="chip" data-sev="SEV3" aria-pressed="false">SEV3</button>
-        <button class="chip" data-sev="REPEAT" aria-pressed="false">↻ Repeat offenders</button>
-      </div>
-    </div>
-    <div class="tbl-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Sev</th><th>Incident</th><th>Services</th><th>MTTR</th><th>Status</th><th>Routing</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
-    <div class="reg-foot" id="foot">—</div>
-  </section>
-
-  <div class="source">
-    <span>data source:</span>
-    <span id="src-detail"><code>data/incidents.sample.json</code> (bundled)</span>
-    <span style="margin-left:auto">
-      <a class="link" href="https://reemmor.app.n8n.cloud/form/21593841-f8b8-43a2-88a8-8595ad3e2f39" target="_blank" rel="noopener">Submit document</a>
-      · <a class="link" href="https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit" target="_blank" rel="noopener">Registry sheet</a>
-      · live CSV via <code>?csv=</code>
-    </span>
   </div>
+
+  <footer>
+    <span>data source: <b style="color:var(--muted)">Google Sheets · Incidents</b></span>
+    <a id="sheet-link" href="https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit" target="_blank">Open registry sheet ↗</a>
+    <a href="https://reemmor.app.n8n.cloud/form/21593841-f8b8-43a2-88a8-8595ad3e2f39" target="_blank">Submit document ↗</a>
+    <span class="spacer" style="flex:1"></span>
+    <span>HINDSIGHT · n8n + Gemini 3 Flash · BON-3</span>
+  </footer>
 </div>
 
 <script>
-/* =========================================================================
-   HINDSIGHT dashboard
-   Data loading order:
-     1. SHEETS_CSV_URL  (published Google Sheets CSV — the live results DB)
-     2. ./data/incidents.sample.json  (bundled; works over http)
-     3. EMBEDDED_DATA   (inlined; works when opened directly from disk)
-   ========================================================================= */
-const DEFAULT_SHEETS_CSV_URL = ""; // paste published Google Sheets CSV link here
-const SHEETS_CSV_URL = new URLSearchParams(location.search).get('csv') || DEFAULT_SHEETS_CSV_URL;
+const C = getComputedStyle(document.documentElement);
+const col = (n) => C.getPropertyValue(n).trim();
+const SEV_COLOR = { SEV1: col('--red'), SEV2: col('--amber'), SEV3: col('--yellow'), SEV4: col('--green'), 'N/A': col('--faint') };
 
-const EMBEDDED_DATA = /*__DATA__*/[{"document_id":"inc-20260314-000","processed_at":"2026-03-14T11:24:29.949732+00:00","incident_title":"Sportsbook trading halt (Mar 14)","incident_type":"dependency-failure","reported_severity":"SEV1","computed_severity":"SEV1","department":"Sportsbook-SRE","affected_services_resolved":["sportsbook"],"affected_jurisdictions":["UKGC","NJ-DGE","MGM"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":61,"status":"resolved","recurrence_fingerprint":"85b5df0e4d45","routing_tags":["auto-filed","exec-escalation","page-oncall","regulatory-review"],"routing_tag":"escalate","action_item_total":3,"action_items_without_owner":0,"summary":"Odds feed provider timeout cascaded to trading. Impact on sportsbook across UKGC, NJ-DGE, MGM."},{"document_id":"inc-20260321-001","processed_at":"2026-03-21T20:24:29.949732+00:00","incident_title":"Edge traffic drop (Mar 21)","incident_type":"configuration","reported_severity":"SEV3","computed_severity":"SEV3","department":"Platform-SRE","affected_services_resolved":["edge-cdn"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":41,"status":"resolved","recurrence_fingerprint":"2f2fd17b80e6","routing_tags":["auto-filed","unowned-actions"],"routing_tag":"auto-approved","action_item_total":4,"action_items_without_owner":3,"summary":"WAF rule update dropped legitimate traffic. Impact on edge-cdn across global."},{"document_id":"inc-20260322-002","processed_at":"2026-03-22T10:24:29.949732+00:00","incident_title":"Sportsbook trading halt (Mar 22)","incident_type":"dependency-failure","reported_severity":"SEV1","computed_severity":"SEV1","department":"Sportsbook-SRE","affected_services_resolved":["sportsbook"],"affected_jurisdictions":["UKGC","NJ-DGE","MGM"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":98,"status":"resolved","recurrence_fingerprint":"85b5df0e4d45","routing_tags":["auto-filed","exec-escalation","page-oncall","regulatory-review","unowned-actions"],"routing_tag":"escalate","action_item_total":4,"action_items_without_owner":1,"summary":"Odds feed provider timeout cascaded to trading. Impact on sportsbook across UKGC, NJ-DGE, MGM."},{"document_id":"inc-20260330-003","processed_at":"2026-03-30T14:24:29.949732+00:00","incident_title":"Sportsbook trading halt (Mar 30)","incident_type":"dependency-failure","reported_severity":"SEV1","computed_severity":"SEV1","department":"Sportsbook-SRE","affected_services_resolved":["sportsbook"],"affected_jurisdictions":["UKGC","NJ-DGE","MGM"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":51,"status":"resolved","recurrence_fingerprint":"85b5df0e4d45","routing_tags":["auto-filed","exec-escalation","page-oncall","regulatory-review"],"routing_tag":"escalate","action_item_total":5,"action_items_without_owner":0,"summary":"Odds feed provider timeout cascaded to trading. Impact on sportsbook across UKGC, NJ-DGE, MGM."},{"document_id":"inc-20260402-004","processed_at":"2026-04-02T18:24:29.949732+00:00","incident_title":"Edge traffic drop (Apr 02)","incident_type":"data-incident","reported_severity":"SEV2","computed_severity":"SEV2","department":"Platform-SRE","affected_services_resolved":["edge-cdn"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":91,"status":"monitoring","recurrence_fingerprint":"f9c3b08faa2b","routing_tags":["auto-filed","exec-escalation","unowned-actions"],"routing_tag":"auto-approved","action_item_total":5,"action_items_without_owner":1,"summary":"WAF rule update dropped legitimate traffic. Impact on edge-cdn across global."},{"document_id":"inc-20260405-005","processed_at":"2026-04-05T10:24:29.949732+00:00","incident_title":"Payments gateway outage (Apr 05)","incident_type":"configuration","reported_severity":"SEV1","computed_severity":"SEV1","department":"Payments-SRE","affected_services_resolved":["payments-gateway"],"affected_jurisdictions":["UKGC","NJ-DGE","MGM"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":81,"status":"resolved","recurrence_fingerprint":"11de23d3fb9b","routing_tags":["auto-filed","exec-escalation","page-oncall","regulatory-review"],"routing_tag":"escalate","action_item_total":1,"action_items_without_owner":0,"summary":"Connection pool exhaustion in the PSP adapter. Impact on payments-gateway across UKGC, NJ-DGE, MGM."},{"document_id":"inc-20260409-006","processed_at":"2026-04-09T09:24:29.949732+00:00","incident_title":"Edge traffic drop (Apr 09)","incident_type":"outage","reported_severity":"SEV3","computed_severity":"SEV3","department":"Platform-SRE","affected_services_resolved":["edge-cdn"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":57,"status":"resolved","recurrence_fingerprint":"b872e62b8c96","routing_tags":["auto-filed"],"routing_tag":"auto-approved","action_item_total":2,"action_items_without_owner":0,"summary":"WAF rule update dropped legitimate traffic. Impact on edge-cdn across global."},{"document_id":"inc-20260413-007","processed_at":"2026-04-13T04:24:29.949732+00:00","incident_title":"CI pipeline stall (Apr 13)","incident_type":"outage","reported_severity":"SEV3","computed_severity":"SEV3","department":"DevEx","affected_services_resolved":["internal-tooling"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":38,"status":"resolved","recurrence_fingerprint":"a79f2be422db","routing_tags":["auto-filed"],"routing_tag":"auto-approved","action_item_total":1,"action_items_without_owner":0,"summary":"CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."},{"document_id":"inc-20260419-008","processed_at":"2026-04-19T03:24:29.949732+00:00","incident_title":"Edge traffic drop (Apr 19)","incident_type":"deployment-failure","reported_severity":"SEV3","computed_severity":"SEV3","department":"Platform-SRE","affected_services_resolved":["edge-cdn"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":35,"status":"resolved","recurrence_fingerprint":"27936d13666b","routing_tags":["auto-filed","unowned-actions"],"routing_tag":"auto-approved","action_item_total":3,"action_items_without_owner":1,"summary":"WAF rule update dropped legitimate traffic. Impact on edge-cdn across global."},{"document_id":"inc-20260426-009","processed_at":"2026-04-26T17:24:29.949732+00:00","incident_title":"CI pipeline stall (Apr 26)","incident_type":"capacity","reported_severity":"SEV3","computed_severity":"SEV3","department":"DevEx","affected_services_resolved":["internal-tooling"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":42,"status":"resolved","recurrence_fingerprint":"fb4339bf9f98","routing_tags":["auto-filed"],"routing_tag":"auto-approved","action_item_total":1,"action_items_without_owner":0,"summary":"CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."},{"document_id":"inc-20260430-010","processed_at":"2026-04-30T21:24:29.949732+00:00","incident_title":"Login failures (Apr 30)","incident_type":"outage","reported_severity":"SEV2","computed_severity":"SEV2","department":"Identity-SRE","affected_services_resolved":["identity"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":84,"status":"resolved","recurrence_fingerprint":"30e80cf82ad8","routing_tags":["auto-filed","exec-escalation","unowned-actions"],"routing_tag":"auto-approved","action_item_total":2,"action_items_without_owner":1,"summary":"Session store failover did not promote a replica. Impact on identity across global."},{"document_id":"inc-20260504-011","processed_at":"2026-05-04T22:24:29.949732+00:00","incident_title":"CI pipeline stall (May 04)","incident_type":"outage","reported_severity":"SEV3","computed_severity":"SEV3","department":"DevEx","affected_services_resolved":["internal-tooling"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":70,"status":"resolved","recurrence_fingerprint":"a79f2be422db","routing_tags":["auto-filed","unowned-actions"],"routing_tag":"auto-approved","action_item_total":5,"action_items_without_owner":4,"summary":"CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."},{"document_id":"inc-20260507-012","processed_at":"2026-05-07T21:24:29.949732+00:00","incident_title":"CI pipeline stall (May 07)","incident_type":"security","reported_severity":"SEV3","computed_severity":"SEV3","department":"DevEx","affected_services_resolved":["internal-tooling"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":22,"status":"resolved","recurrence_fingerprint":"94900095c709","routing_tags":["auto-filed","unowned-actions"],"routing_tag":"auto-approved","action_item_total":2,"action_items_without_owner":1,"summary":"CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."},{"document_id":"inc-20260512-013","processed_at":"2026-05-12T14:24:29.949732+00:00","incident_title":"Wallet balance errors (May 12)","incident_type":"capacity","reported_severity":"SEV1","computed_severity":"SEV1","department":"Payments-SRE","affected_services_resolved":["wallet"],"affected_jurisdictions":["UKGC","NJ-DGE","MGM"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":84,"status":"resolved","recurrence_fingerprint":"7cf953e596cf","routing_tags":["auto-filed","exec-escalation","page-oncall","regulatory-review","unowned-actions"],"routing_tag":"escalate","action_item_total":3,"action_items_without_owner":1,"summary":"Ledger write lock contention under peak load. Impact on wallet across UKGC, NJ-DGE, MGM."},{"document_id":"inc-20260518-014","processed_at":"2026-05-18T07:24:29.949732+00:00","incident_title":"Casino platform degradation (May 18)","incident_type":"capacity","reported_severity":"SEV2","computed_severity":"SEV2","department":"Platform-SRE","affected_services_resolved":["casino-platform"],"affected_jurisdictions":["UKGC","NJ-DGE"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":28,"status":"resolved","recurrence_fingerprint":"f766b84c27f3","routing_tags":["auto-filed","exec-escalation","regulatory-review","unowned-actions"],"routing_tag":"auto-approved","action_item_total":4,"action_items_without_owner":3,"summary":"Game RNG service OOM after memory leak. Impact on casino-platform across UKGC, NJ-DGE."},{"document_id":"inc-20260522-015","processed_at":"2026-05-22T03:24:29.949732+00:00","incident_title":"Regulatory reporting delay (May 22)","incident_type":"dependency-failure","reported_severity":"SEV2","computed_severity":"SEV2","department":"Data-Platform","affected_services_resolved":["reporting-db"],"affected_jurisdictions":["UKGC","NJ-DGE"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":25,"status":"resolved","recurrence_fingerprint":"e7f4f8d5523f","routing_tags":["auto-filed","exec-escalation","regulatory-review","unowned-actions"],"routing_tag":"auto-approved","action_item_total":5,"action_items_without_owner":2,"summary":"Nightly ETL deadlock delayed regulatory reporting. Impact on reporting-db across UKGC, NJ-DGE."},{"document_id":"inc-20260525-016","processed_at":"2026-05-25T19:24:29.949732+00:00","incident_title":"Notification delivery delay (May 25)","incident_type":"data-incident","reported_severity":"SEV2","computed_severity":"SEV2","department":"Engagement-Eng","affected_services_resolved":["notifications"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":62,"status":"resolved","recurrence_fingerprint":"484a9c16faf1","routing_tags":["auto-filed","exec-escalation","unowned-actions"],"routing_tag":"auto-approved","action_item_total":4,"action_items_without_owner":3,"summary":"SMS provider rate-limited outbound messages. Impact on notifications across global."},{"document_id":"inc-20260531-017","processed_at":"2026-05-31T04:24:29.949732+00:00","incident_title":"Regulatory reporting delay (May 31)","incident_type":"degradation","reported_severity":"SEV2","computed_severity":"SEV2","department":"Data-Platform","affected_services_resolved":["reporting-db"],"affected_jurisdictions":["UKGC","NJ-DGE"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":49,"status":"monitoring","recurrence_fingerprint":"366c45d62a7a","routing_tags":["auto-filed","exec-escalation","regulatory-review"],"routing_tag":"auto-approved","action_item_total":2,"action_items_without_owner":0,"summary":"Nightly ETL deadlock delayed regulatory reporting. Impact on reporting-db across UKGC, NJ-DGE."},{"document_id":"inc-20260605-018","processed_at":"2026-06-05T14:24:29.949732+00:00","incident_title":"CI pipeline stall (Jun 05)","incident_type":"outage","reported_severity":"SEV3","computed_severity":"SEV3","department":"DevEx","affected_services_resolved":["internal-tooling"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":78,"status":"monitoring","recurrence_fingerprint":"a79f2be422db","routing_tags":["auto-filed","unowned-actions"],"routing_tag":"auto-approved","action_item_total":5,"action_items_without_owner":4,"summary":"CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."},{"document_id":"inc-20260611-019","processed_at":"2026-06-11T10:24:29.949732+00:00","incident_title":"CI pipeline stall (Jun 11)","incident_type":"deployment-failure","reported_severity":"SEV3","computed_severity":"SEV3","department":"DevEx","affected_services_resolved":["internal-tooling"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":59,"status":"resolved","recurrence_fingerprint":"d4bcfab811d6","routing_tags":["auto-filed","unowned-actions"],"routing_tag":"auto-approved","action_item_total":2,"action_items_without_owner":1,"summary":"CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."},{"document_id":"vuln-20260613-100","processed_at":"2026-06-13T13:24:29.949732+00:00","incident_title":"Critical RCE in payments TLS library (CVE-2026-21841)","incident_type":"vulnerability-scan","reported_severity":"SEV3","computed_severity":"SEV1","department":"SecOps","affected_services_resolved":["payments-gateway","wallet"],"affected_jurisdictions":["UKGC","NJ-DGE","MGM"],"sensitivity":"confidential","cvss_score":9.8,"cve_ids":["CVE-2026-21841"],"ttr_minutes":0,"status":"monitoring","recurrence_fingerprint":"cve2026218410","routing_tags":["auto-filed","exec-escalation","page-oncall","regulatory-review","severity-review"],"routing_tag":"escalate","action_item_total":3,"action_items_without_owner":0,"summary":"Authenticated Nessus scan flagged a remote code execution vuln in the TLS library on 23 payment hosts."},{"document_id":"inc-20260615-020","processed_at":"2026-06-15T14:24:29.949732+00:00","incident_title":"KYC onboarding delays (Jun 15)","incident_type":"configuration","reported_severity":"SEV2","computed_severity":"SEV2","department":"Compliance-Eng","affected_services_resolved":["kyc"],"affected_jurisdictions":["UKGC","NJ-DGE"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":48,"status":"resolved","recurrence_fingerprint":"55b4c78bf782","routing_tags":["auto-filed","exec-escalation","regulatory-review"],"routing_tag":"auto-approved","action_item_total":5,"action_items_without_owner":0,"summary":"Third-party verification vendor returned 5xx. Impact on kyc across UKGC, NJ-DGE."},{"document_id":"vuln-20260616-101","processed_at":"2026-06-16T13:24:29.949732+00:00","incident_title":"Credential brute force against identity (limited ATO)","incident_type":"intrusion","reported_severity":"SEV2","computed_severity":"SEV2","department":"Security-IR","affected_services_resolved":["identity"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":44,"status":"resolved","recurrence_fingerprint":"intrusionatob1","routing_tags":["auto-filed","exec-escalation","needs-review"],"routing_tag":"needs-review","action_item_total":3,"action_items_without_owner":1,"summary":"Splunk ES fired on distributed credential stuffing; 3 accounts accessed, sessions revoked."},{"document_id":"inc-20260618-021","processed_at":"2026-06-18T14:24:29.949732+00:00","incident_title":"CI pipeline stall (Jun 18)","incident_type":"deployment-failure","reported_severity":"SEV3","computed_severity":"SEV3","department":"DevEx","affected_services_resolved":["internal-tooling"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":null,"cve_ids":[],"ttr_minutes":48,"status":"resolved","recurrence_fingerprint":"d4bcfab811d6","routing_tags":["auto-filed","unowned-actions"],"routing_tag":"auto-approved","action_item_total":4,"action_items_without_owner":3,"summary":"CI runner disk filled and stalled the pipeline. Impact on internal-tooling across global."},{"document_id":"vuln-20260619-103","processed_at":"2026-06-19T13:24:29.949732+00:00","incident_title":"Medium-severity dependency vuln in internal tooling","incident_type":"vulnerability-scan","reported_severity":"SEV3","computed_severity":"SEV3","department":"SecOps","affected_services_resolved":["internal-tooling"],"affected_jurisdictions":["GLOBAL"],"sensitivity":"internal","cvss_score":5.6,"cve_ids":["CVE-2026-11002"],"ttr_minutes":0,"status":"resolved","recurrence_fingerprint":"cve2026110020","routing_tags":["auto-filed"],"routing_tag":"auto-approved","action_item_total":1,"action_items_without_owner":0,"summary":"Trivy flagged a medium CVE in a CI image dependency; patched in the next build."},{"document_id":"vuln-20260621-102","processed_at":"2026-06-21T13:24:29.949732+00:00","incident_title":"Phishing harvesting compliance staff KYC creds","incident_type":"phishing","reported_severity":"SEV2","computed_severity":"SEV2","department":"SecOps","affected_services_resolved":["kyc"],"affected_jurisdictions":["UKGC","NJ-DGE"],"sensitivity":"confidential","cvss_score":null,"cve_ids":[],"ttr_minutes":30,"status":"monitoring","recurrence_fingerprint":"phishkyc0001","routing_tags":["auto-filed","exec-escalation","regulatory-review"],"routing_tag":"needs-review","action_item_total":3,"action_items_without_owner":0,"summary":"Look-alike KYC portal harvested credentials from 2 compliance analysts; domain blocked."}]/*__END__*/;
-
-const SEV_COLOR = {SEV1:'#FF4D5E', SEV2:'#FF9F43', SEV3:'#FFD23F', SEV4:'#4DD0A7'};
-const SEV_ORDER = ['SEV1','SEV2','SEV3','SEV4'];
-const $ = s => document.querySelector(s);
-function esc(s){
-  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* ---- normalize one record from either JSON or CSV row ---- */
-function normalize(r){
-  const arr = v => Array.isArray(v) ? v
-    : (v==null||v==='') ? []
-    : String(v).split(/[;,|]/).map(s=>s.trim()).filter(Boolean);
-  const num = v => { const n = parseFloat(v); return isFinite(n) ? n : null; };
-  return {
-    id: r.document_id || r.id || '',
-    at: r.processed_at || r.detected_at || '',
-    title: r.incident_title || r.filename || r.title || 'Untitled incident',
-    type: r.incident_type || r.classification || 'unknown',
-    reported: (r.reported_severity||'').toUpperCase() || null,
-    sev: (r.computed_severity||r.severity||'SEV4').toUpperCase(),
-    dept: r.department || '—',
-    services: arr(r.affected_services_resolved || r.affected_services),
-    jurisdictions: arr(r.affected_jurisdictions),
-    sensitivity: r.sensitivity || 'internal',
-    cvss: num(r.cvss_score),
-    cve: arr(r.cve_ids),
-    routingTag: r.routing_tag || (()=>{
-      const sev=(r.computed_severity||r.severity||'').toUpperCase();
-      const c=num(r.cvss_score); const tg=arr(r.routing_tags);
-      if(sev==='SEV1' || (c!=null && c>=9)) return 'escalate';
-      if(tg.includes('needs-review') || tg.includes('severity-review')) return 'needs-review';
-      return 'auto-approved';
-    })(),
-    mttr: num(r.ttr_minutes),
-    status: (r.status||'resolved').toLowerCase(),
-    fp: r.recurrence_fingerprint || '',
-    tags: arr(r.routing_tags),
-    actions: num(r.action_item_total) || 0,
-    unowned: num(r.action_items_without_owner) || 0,
-    summary: r.summary || ''
-  };
-}
-
-async function loadData(){
-  if (SHEETS_CSV_URL){
-    try{
-      const txt = await (await fetch(SHEETS_CSV_URL)).text();
-      const parsed = Papa.parse(txt, {header:true, skipEmptyLines:true});
-      if (parsed.data && parsed.data.length){ setSource('live', 'Google Sheets (live)'); return parsed.data.map(normalize); }
-    }catch(e){ showBanner('Live Sheets feed unreachable — showing bundled sample. ('+e.message+')'); }
+// ---- robust CSV parse (handles quoted fields w/ commas + escaped quotes) ----
+function parseCSV(text) {
+  const rows = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+      else field += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+    else if (c !== '\r') field += c;
   }
-  try{
-    const res = await fetch('./data/incidents.sample.json', {cache:'no-store'});
-    if (res.ok){ const j = await res.json(); setSource('sample','sample feed · '+ '<code>data/incidents.sample.json</code>'); return j.map(normalize); }
-  }catch(e){ /* file:// blocks this — fall through to embedded */ }
-  setSource('embedded','sample feed · embedded');
-  return EMBEDDED_DATA.map(normalize);
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  const header = (rows.shift() || []).map((h) => h.trim());
+  return rows.filter((r) => r.some((c) => c.trim() !== '')).map((r) => Object.fromEntries(header.map((h, i) => [h, (r[i] ?? '').trim()])));
 }
 
-function setSource(kind, label){
-  $('#m-src').textContent = kind==='live' ? 'live' : 'sample feed';
-  $('#src-detail').textContent = label.replace(/<[^>]+>/g, '');
+function severityOf(r) {
+  const cv = parseFloat(r.cvss_score);
+  if (!isNaN(cv) && cv > 0) return cv >= 9 ? 'SEV1' : cv >= 7 ? 'SEV2' : cv >= 4 ? 'SEV3' : 'SEV4';
+  if ((r.routing_tag || '') === 'escalate') return 'SEV1';
+  return 'N/A';
 }
-function showBanner(msg){ const b=$('#banner'); b.style.display='block'; b.textContent='⚠ '+msg; }
+const countBy = (arr, fn) => arr.reduce((m, x) => { const k = fn(x) || '—'; m[k] = (m[k] || 0) + 1; return m; }, {});
 
-/* ---------- rendering ---------- */
-let DATA=[], FILTER='ALL', repeatSet=new Set();
-
-function fmtDate(iso){ if(!iso) return '—'; const d=new Date(iso); return isNaN(d)?'—':d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
-
-function buildPulse(){
-  const svg=$('#pulse'); const W=1000,H=96,pad=8,base=H-20;
-  const recs=[...DATA].filter(r=>r.at).sort((a,b)=>new Date(a.at)-new Date(b.at));
-  let html='';
-  for(let i=1;i<4;i++){ const y=base-(i*(base-12)/4); html+=`<line class="grid-line" x1="0" y1="${y}" x2="${W}" y2="${y}"/>`; }
-  html+=`<line class="grid-line" x1="0" y1="${base}" x2="${W}" y2="${base}"/>`;
-  if(recs.length){
-    const t0=new Date(recs[0].at).getTime(), t1=new Date(recs[recs.length-1].at).getTime();
-    const span=Math.max(1,t1-t0);
-    const x=r=>pad+((new Date(r.at).getTime()-t0)/span)*(W-2*pad);
-    const sevH={SEV1:base-10,SEV2:base-30,SEV3:base-46,SEV4:base-58};
-    // resting baseline polyline
-    let pts=`0,${base} `;
-    recs.forEach(r=>{ const xx=x(r); pts+=`${xx-3},${base} ${xx},${sevH[r.sev]} ${xx+3},${base} `; });
-    pts+=`${W},${base}`;
-    html+=`<polyline class="baseline" points="${pts}"/>`;
-    // spikes (clickable -> filter)
-    recs.forEach(r=>{ const xx=x(r); const yy=sevH[r.sev]; const c=SEV_COLOR[r.sev];
-      html+=`<line class="spike" x1="${xx}" y1="${base}" x2="${xx}" y2="${yy}" stroke="${c}" stroke-width="2.4" data-id="${r.id}"/>`;
-      html+=`<circle class="spike" cx="${xx}" cy="${yy}" r="${r.sev==='SEV1'?3.4:2.4}" fill="${c}" data-id="${r.id}"/>`;
-    });
-  }
-  svg.innerHTML=html;
-  // tooltips
-  const tip=$('#ptip'); const box=svg.getBoundingClientRect();
-  svg.querySelectorAll('.spike').forEach(el=>{
-    el.addEventListener('mouseenter',ev=>{
-      const r=DATA.find(d=>d.id===el.dataset.id); if(!r) return;
-      const rect=svg.getBoundingClientRect();
-      const cx=(parseFloat(el.getAttribute('x1')||el.getAttribute('cx'))/1000)*rect.width;
-      tip.innerHTML=`<b>${esc(r.sev)}</b> · ${esc(fmtDate(r.at))}<br>${esc(r.title)}`;
-      tip.style.left=cx+'px'; tip.style.top='12px'; tip.style.opacity='1';
-    });
-    el.addEventListener('mouseleave',()=>tip.style.opacity='0');
-    el.addEventListener('click',()=>{ if(SEV_COLOR[DATA.find(d=>d.id===el.dataset.id)?.sev]) setFilter(DATA.find(d=>d.id===el.dataset.id).sev); });
+function chartDefaults() { Chart.defaults.color = col('--muted'); Chart.defaults.font.family = 'JetBrains Mono'; Chart.defaults.font.size = 11; Chart.defaults.borderColor = col('--line'); }
+let charts = {};
+function donut(id, labels, data, colors) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: col('--panel'), borderWidth: 3, hoverOffset: 6 }] },
+    options: { cutout: '64%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, boxHeight: 10, padding: 12 } } }, animation: { duration: 600 } },
+  });
+}
+function bars(id, labels, data, color, horizontal) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 5, barPercentage: .72, categoryPercentage: .8 }] },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x',
+      plugins: { legend: { display: false } },
+      scales: { x: { grid: { color: col('--line'), drawTicks: false } }, y: { grid: { color: 'transparent' }, beginAtZero: true, ticks: { precision: 0 } } },
+      animation: { duration: 600 },
+    },
   });
 }
 
-function buildKPIs(){
-  const n=DATA.length;
-  const withMttr=DATA.filter(r=>r.mttr!=null);
-  const mttr=withMttr.length?Math.round(withMttr.reduce((s,r)=>s+r.mttr,0)/withMttr.length):0;
-  const sev1=DATA.filter(r=>r.sev==='SEV1').length;
-  const unowned=DATA.reduce((s,r)=>s+r.unowned,0);
-  const recurring=repeatSet.size;
-  // mttr trend: first third vs last third
-  const sorted=[...withMttr].sort((a,b)=>new Date(a.at)-new Date(b.at));
-  const k=Math.max(1,Math.floor(sorted.length/3));
-  const early=sorted.slice(0,k), late=sorted.slice(-k);
-  const ea=early.reduce((s,r)=>s+r.mttr,0)/early.length, la=late.reduce((s,r)=>s+r.mttr,0)/late.length;
-  const delta=ea?Math.round((la-ea)/ea*100):0;
-  const trendTxt = delta<0 ? `<span class="down">▼ ${Math.abs(delta)}% faster</span> vs early`
-                           : `<span class="up">▲ ${delta}% slower</span> vs early`;
-  const cards=[
-    {k:'Incidents', v:n, sub:`${DATA.filter(r=>r.status!=='resolved').length} still open`, cls:''},
-    {k:'Mean time to resolve', v:mttr, unit:'m', sub:trendTxt, cls:''},
-    {k:'SEV1 events', v:sev1, sub:'exec-escalation + page', cls:sev1>0?'crit':''},
-    {k:'Unowned actions', v:unowned, sub:'postmortem follow-ups w/o owner', cls:unowned>0?'warn':''},
-    {k:'Recurring', v:recurring, sub:'fingerprints seen 2+ times', cls:recurring>0?'warn':''}
-  ];
-  $('#kpis').innerHTML=cards.map(c=>`
-    <div class="kpi ${c.cls}">
-      <div class="k">${c.k}</div>
-      <div class="v">${c.v}${c.unit?`<small>${c.unit}</small>`:''}</div>
-      <div class="sub">${c.sub}</div>
-    </div>`).join('');
-}
+function render(rows) {
+  const total = rows.length;
+  const sev = countBy(rows, severityOf);
+  const sens = countBy(rows, (r) => r.sensitivity || 'internal');
+  const route = countBy(rows, (r) => r.routing_tag || 'auto-approved');
+  const type = countBy(rows, (r) => r.classification || 'other');
+  const conf = sens.confidential || 0;
+  const esc = route.escalate || 0;
+  const crit = rows.filter((r) => parseFloat(r.cvss_score) >= 9).length;
+  const cvssVals = rows.map((r) => parseFloat(r.cvss_score)).filter((v) => !isNaN(v) && v > 0);
+  const avgConf = total ? (rows.reduce((s, r) => s + (parseFloat(r.confidence_score) || 0), 0) / total) : 0;
 
-const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-Chart.defaults.font.family="'JetBrains Mono', monospace";
-Chart.defaults.font.size=11;
-Chart.defaults.color=cssVar('--muted');
+  const kpi = (label, val, meta, accent) => `<div class="kpi" style="--accent:${accent}"><div class="label">${label}</div><div class="val">${val}</div><div class="meta">${meta}</div></div>`;
+  document.getElementById('kpis').innerHTML =
+    kpi('Incidents', total, 'documents processed', col('--teal')) +
+    kpi('Critical', crit, 'CVSS ≥ 9.0', col('--red')) +
+    kpi('Confidential', conf, total ? Math.round(conf / total * 100) + '% of estate' : '—', col('--red')) +
+    kpi('Escalated', esc, 'paged to on-call', col('--amber')) +
+    kpi('Avg confidence', avgConf.toFixed(2), 'extraction quality', col('--violet'));
 
-function buildCharts(){
-  const counts=SEV_ORDER.map(s=>DATA.filter(r=>r.sev===s).length);
-  $('#sev-total').textContent=DATA.length;
-  new Chart($('#c-sev'),{type:'doughnut',data:{labels:SEV_ORDER,
-    datasets:[{data:counts,backgroundColor:SEV_ORDER.map(s=>SEV_COLOR[s]),borderColor:cssVar('--panel'),borderWidth:3,hoverOffset:6}]},
-    options:{cutout:'72%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,boxHeight:9,padding:14,usePointStyle:true,pointStyle:'rectRounded'}},
-      tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw} incident${c.raw===1?'':'s'}`}}}}});
+  const sevOrder = ['SEV1', 'SEV2', 'SEV3', 'SEV4', 'N/A'].filter((k) => sev[k]);
+  donut('c-sev', sevOrder, sevOrder.map((k) => sev[k]), sevOrder.map((k) => SEV_COLOR[k]));
+  const sensOrder = ['confidential', 'internal', 'public'].filter((k) => sens[k]);
+  donut('c-sens', sensOrder, sensOrder.map((k) => sens[k]), [col('--red'), col('--amber'), col('--green')]);
+  const rk = Object.keys(route).sort((a, b) => route[b] - route[a]);
+  bars('c-route', rk, rk.map((k) => route[k]), rk.map((k) => k === 'escalate' || k === 'page-oncall' ? col('--red') : k === 'needs-review' ? col('--amber') : col('--teal')), true);
+  const tk = Object.keys(type).sort((a, b) => type[b] - type[a]);
+  bars('c-type', tk, tk.map((k) => type[k]), col('--teal'), true);
+  const buckets = [0, 0, 0, 0];
+  cvssVals.forEach((v) => { buckets[v >= 9 ? 3 : v >= 7 ? 2 : v >= 4 ? 1 : 0]++; });
+  bars('c-cvss', ['0–3.9 low', '4–6.9 med', '7–8.9 high', '9–10 crit'], buckets, [col('--green'), col('--yellow'), col('--amber'), col('--red')], false);
 
-  const sorted=[...DATA].filter(r=>r.mttr!=null).sort((a,b)=>new Date(a.at)-new Date(b.at));
-  new Chart($('#c-mttr'),{type:'line',data:{labels:sorted.map(r=>fmtDate(r.at)),
-    datasets:[{data:sorted.map(r=>r.mttr),borderColor:cssVar('--accent'),borderWidth:2,tension:.32,
-      pointBackgroundColor:sorted.map(r=>SEV_COLOR[r.sev]),pointBorderColor:sorted.map(r=>SEV_COLOR[r.sev]),
-      pointRadius:sorted.map(r=>r.sev==='SEV1'?4:3),pointHoverRadius:6,
-      fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,230);g.addColorStop(0,'rgba(77,208,167,.18)');g.addColorStop(1,'rgba(77,208,167,0)');return g;}}]},
-    options:{plugins:{legend:{display:false},tooltip:{callbacks:{title:c=>sorted[c[0].dataIndex].title,label:c=>` ${c.raw} min · ${sorted[c.dataIndex].sev}`}}},
-      scales:{x:{grid:{color:cssVar('--line-soft')},ticks:{maxRotation:0,autoSkipPadding:16}},
-        y:{grid:{color:cssVar('--line-soft')},title:{display:true,text:'minutes',color:cssVar('--dim')},beginAtZero:true}}}});
-
-  const svc={}; DATA.forEach(r=>r.services.forEach(s=>svc[s]=(svc[s]||0)+1));
-  const top=Object.entries(svc).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  new Chart($('#c-svc'),{type:'bar',data:{labels:top.map(t=>t[0]),
-    datasets:[{data:top.map(t=>t[1]),backgroundColor:'rgba(77,208,167,.55)',borderColor:cssVar('--accent'),borderWidth:1,borderRadius:4,barThickness:18}]},
-    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} incident${c.raw===1?'':'s'}`}}},
-      scales:{x:{grid:{color:cssVar('--line-soft')},beginAtZero:true,ticks:{precision:0}},y:{grid:{display:false}}}}});
-
-  const ty={}; DATA.forEach(r=>ty[r.type]=(ty[r.type]||0)+1);
-  const tt=Object.entries(ty).sort((a,b)=>b[1]-a[1]);
-  new Chart($('#c-type'),{type:'bar',data:{labels:tt.map(t=>t[0]),
-    datasets:[{data:tt.map(t=>t[1]),backgroundColor:'rgba(134,150,167,.35)',borderColor:cssVar('--muted'),borderWidth:1,borderRadius:4,barThickness:16}]},
-    options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw}×`}}},
-      scales:{x:{grid:{color:cssVar('--line-soft')},beginAtZero:true,ticks:{precision:0}},y:{grid:{display:false}}}}});
-
-  // Data sensitivity — the compliance lens (cyber hybrid)
-  const SENS_ORDER=['confidential','internal','public'];
-  const SENS_COLOR={confidential:'#FF4D5E',internal:'#FFD23F',public:'#4DD0A7'};
-  const sCounts=SENS_ORDER.map(s=>DATA.filter(r=>r.sensitivity===s).length);
-  $('#sens-total').textContent=DATA.filter(r=>r.sensitivity==='confidential').length;
-  new Chart($('#c-sens'),{type:'doughnut',data:{labels:SENS_ORDER,
-    datasets:[{data:sCounts,backgroundColor:SENS_ORDER.map(s=>SENS_COLOR[s]),borderColor:cssVar('--panel'),borderWidth:3,hoverOffset:6}]},
-    options:{cutout:'72%',plugins:{legend:{position:'bottom',labels:{boxWidth:9,boxHeight:9,padding:14,usePointStyle:true,pointStyle:'rectRounded'}},
-      tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}`}}}}});
-
-  // Routing decisions — escalate / needs-review / auto-approved (SecOps rubric)
-  const ROUTE_ORDER=['escalate','needs-review','auto-approved'];
-  const ROUTE_COLOR={escalate:'#FF4D5E','needs-review':'#FF9F43','auto-approved':'#4DD0A7'};
-  const rCounts=ROUTE_ORDER.map(t=>DATA.filter(r=>r.routingTag===t).length);
-  new Chart($('#c-route'),{type:'bar',data:{labels:ROUTE_ORDER,
-    datasets:[{data:rCounts,backgroundColor:ROUTE_ORDER.map(t=>ROUTE_COLOR[t]),borderColor:ROUTE_ORDER.map(t=>ROUTE_COLOR[t]),borderWidth:1,borderRadius:5,barThickness:30}]},
-    options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} incident${c.raw===1?'':'s'}`}}},
-      scales:{x:{grid:{display:false}},y:{grid:{color:cssVar('--line-soft')},beginAtZero:true,ticks:{precision:0}}}}});
-}
-
-function rowHTML(r){
-  const repeat=repeatSet.has(r.fp);
-  const tagEls=r.tags.slice(0,3).map(t=>{
-    const hot=/page-oncall|exec-escalation|budget-breach/.test(t);
-    const rep=/repeat-offender/.test(t);
-    return `<span class="tag ${hot?'hot':''} ${rep?'rep':''}">${esc(t)}</span>`;
+  document.getElementById('reg-count').textContent = `(${total})`;
+  const esc2 = (s) => String(s == null ? '' : s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  const sevSort = { SEV1: 0, SEV2: 1, SEV3: 2, SEV4: 3, 'N/A': 4 };
+  const bodyHtml = rows.slice().sort((a, b) => sevSort[severityOf(a)] - sevSort[severityOf(b)]).map((r) => {
+    const s = severityOf(r);
+    const when = (r.processed_at || '').replace('T', ' ').slice(0, 16);
+    return `<tr>
+      <td><span class="sev ${s.replace('/', '')}">${s}</span></td>
+      <td>${esc2(r.filename) || '<span class="tag">—</span>'}</td>
+      <td class="tag">${esc2(r.classification)}</td>
+      <td class="tag">${esc2(r.department)}</td>
+      <td class="tag ${r.sensitivity === 'confidential' ? 'conf' : ''}">${esc2(r.sensitivity)}</td>
+      <td class="tag ${r.routing_tag === 'escalate' ? 'esc' : ''}">${esc2(r.routing_tag)}</td>
+      <td class="mono">${esc2(r.cvss_score) || '·'}</td>
+      <td class="mono">${esc2(r.cve_ids) || '·'}</td>
+      <td class="mono" style="color:var(--faint)">${esc2(when)}</td>
+    </tr>`;
   }).join('');
-  const extra=r.tags.length>3?`<span class="tag">+${r.tags.length-3}</span>`:'';
-  const cvssBadge=r.cvss!=null?` <span class="tag hot" title="CVSS base score${r.cve.length?' · '+esc(r.cve.join(', ')):''}">CVSS ${esc(r.cvss)}</span>`:'';
-  return `<tr>
-    <td><span class="sev-badge sev-${esc(r.sev)}">${esc(r.sev)}</span></td>
-    <td><span class="ttl">${esc(r.title)}${cvssBadge}${repeat?' <span class="tag rep" title="recurring failure">↻</span>':''}<span class="sum">${esc(r.summary)}</span></span></td>
-    <td><span class="svc">${esc(r.services.join(', ')||'—')}</span><br><span class="svc" style="color:var(--dim)">${esc(r.jurisdictions.join(' · '))}</span></td>
-    <td><span class="mttr">${r.mttr!=null?esc(r.mttr)+'m':'—'}</span></td>
-    <td><span class="st ${esc(r.status)}">${esc(r.status)}</span></td>
-    <td><div class="tags">${tagEls}${extra}</div></td>
-  </tr>`;
+  document.getElementById('reg').innerHTML = bodyHtml || `<tr><td colspan="9" class="empty">No incidents match this filter.</td></tr>`;
 }
 
-function renderRows(){
-  let list=DATA;
-  if(FILTER==='REPEAT') list=DATA.filter(r=>repeatSet.has(r.fp));
-  else if(FILTER!=='ALL') list=DATA.filter(r=>r.sev===FILTER);
-  list=[...list].sort((a,b)=>SEV_ORDER.indexOf(a.sev)-SEV_ORDER.indexOf(b.sev) || new Date(b.at)-new Date(a.at));
-  $('#rows').innerHTML=list.map(rowHTML).join('') || `<tr><td colspan="6" style="padding:28px;text-align:center;color:var(--dim);font-family:var(--mono)">No incidents match this filter.</td></tr>`;
-  $('#foot').textContent=`showing ${list.length} of ${DATA.length} incidents${FILTER!=='ALL'?' · filter: '+FILTER:''}`;
-}
-
-function setFilter(f){
-  FILTER=f;
-  document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed', String(c.dataset.sev===f)));
-  renderRows();
-}
-
-function initChips(){
-  document.querySelectorAll('.chip').forEach(c=>{
-    c.addEventListener('click',()=>setFilter(c.dataset.sev));
-    c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setFilter(c.dataset.sev);}});
+let ALL = [], activeSev = 'all';
+function applyFilter() { render(activeSev === 'all' ? ALL : ALL.filter((r) => severityOf(r) === activeSev)); }
+function buildFilters() {
+  const sevs = ['all', 'SEV1', 'SEV2', 'SEV3', 'SEV4'];
+  document.getElementById('filters').innerHTML = sevs.map((s) =>
+    `<button class="chip ${s === 'SEV1' ? 'red' : ''}" data-sev="${s}" aria-pressed="${s === 'all'}">${s === 'all' ? 'ALL' : s}</button>`).join('');
+  document.querySelectorAll('.chip').forEach((b) => b.onclick = () => {
+    activeSev = b.dataset.sev;
+    document.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    applyFilter();
   });
 }
 
-(async function init(){
-  DATA = await loadData();
-  // compute recurrence set
-  const fpCount={}; DATA.forEach(r=>{if(r.fp) fpCount[r.fp]=(fpCount[r.fp]||0)+1;});
-  repeatSet=new Set(Object.entries(fpCount).filter(([,n])=>n>1).map(([k])=>k));
+const EMBEDDED = `document_id,filename,file_type,processed_at,classification,department,sentiment,confidence_score,summary,routing_tag,sensitivity,action_items,cvss_score,cve_ids
+hs-001,vuln_scan_critical_openssl.md,md,2026-06-25T21:40:00Z,vulnerability-scan,NetSec,negative,0.92,Critical OpenSSL RCE on perimeter hosts,escalate,confidential,"[]",9.8,CVE-2026-21841
+hs-002,phishing_kyc_credential_harvest.md,md,2026-06-25T18:12:00Z,phishing,SecOps,negative,0.88,KYC credential-harvest campaign,escalate,confidential,"[]",,
+hs-003,siem_bruteforce_intrusion.md,md,2026-06-25T14:05:00Z,intrusion,Identity-Sec,negative,0.90,Brute-force SSH intrusion vs bastion,needs-review,internal,"[]",7.2,
+hs-004,edge_cdn_sev2_eu_errors.pdf,pdf,2026-06-25T09:40:00Z,degradation,NetSec,neutral,0.81,Edge CDN elevated 5xx in EU,auto-approved,public,"[]",4.5,
+hs-005,malware_beacon_c2.txt,txt,2026-06-24T22:30:00Z,malware,SecOps,negative,0.86,Endpoint beaconing to known C2,escalate,confidential,"[]",8.1,CVE-2026-30771
+hs-006,ddos_volumetric_waf.md,md,2026-06-24T16:50:00Z,ddos,NetSec,negative,0.79,Volumetric flood absorbed by WAF,needs-review,internal,"[]",,`;
 
-  const dates=DATA.map(r=>r.at).filter(Boolean).map(d=>new Date(d)).sort((a,b)=>a-b);
-  if(dates.length){
-    const opt={month:'short',day:'numeric'};
-    $('#m-window').textContent=`${dates[0].toLocaleDateString('en-US',opt)} – ${dates[dates.length-1].toLocaleDateString('en-US',opt)}`;
+async function boot() {
+  chartDefaults();
+  buildFilters();
+  const params = new URLSearchParams(location.search);
+  const csvUrl = params.get('csv');
+  const srcEl = document.getElementById('src');
+  let text = null, label = '';
+  if (csvUrl) {
+    try { const res = await fetch(csvUrl); if (res.ok) { text = await res.text(); label = 'published Google Sheet'; } } catch (e) { /* fall through */ }
   }
-  $('#m-updated').textContent=new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-
-  buildPulse();
-  buildKPIs();
-  buildCharts();
-  initChips();
-  renderRows();
-  window.addEventListener('resize',()=>{ clearTimeout(window.__rt); window.__rt=setTimeout(buildPulse,200); });
-})();
+  if (!text) {
+    try { const res = await fetch('fixtures/incidents.csv'); if (res.ok) { text = await res.text(); label = 'fixtures/incidents.csv'; } } catch (e) { /* fall through */ }
+  }
+  if (!text) { text = EMBEDDED; label = 'embedded sample'; document.getElementById('live-label').textContent = 'DEMO'; }
+  srcEl.textContent = 'source: ' + label;
+  ALL = parseCSV(text).filter((r) => r.document_id || r.filename);
+  applyFilter();
+}
+boot();
 </script>
 </body>
 </html>
