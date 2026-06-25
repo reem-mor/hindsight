@@ -1,0 +1,43 @@
+# Weather proxy + Open WebUI (chat UI on :3000, API on :5000).
+#
+#   docker compose -f docker-compose.weather.yml up -d
+#
+# Open WebUI: http://localhost:3000
+# Weather API: http://localhost:5000/weather?city=Tel%20Aviv
+# OpenAPI spec: http://localhost:5000/openapi.json
+#
+# In Open WebUI → Settings → Tools → add user tool server:
+#   Base URL: http://localhost:5000
+#   OpenAPI path: openapi.json
+
+services:
+  weather-api:
+    image: python:3.12-slim
+    container_name: weather-api
+    working_dir: /app
+    volumes:
+      - ./app.py:/app/app.py:ro
+    command: >
+      sh -c "pip install -q --no-cache-dir flask flask-cors requests &&
+             python app.py"
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - open-webui:/app/backend/data
+    restart: unless-stopped
+
+volumes:
+  open-webui:
+    external: true
+    name: open-webui
