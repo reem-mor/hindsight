@@ -78,6 +78,23 @@ def test_extractor_text_cp1252_fallback(tmp_path) -> None:
     assert chr(0x2013) in text  # 0x96 decoded to en dash
 
 
+def test_extractor_standalone_image_vision_ready(tmp_path) -> None:
+    """A standalone image (e.g. a SIEM screenshot) is Vision-ready: no text, image present."""
+    png = tmp_path / "siem_dashboard.png"
+    # minimal valid 1x1 PNG
+    png.write_bytes(
+        bytes.fromhex(
+            "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+            "0000000a49444154789c6360000002000100052a0d0a2db40000000049454e44ae426082"
+        )
+    )
+    data = _run(str(png))
+    assert data["ok"] is True
+    assert data["file_type"] == "png"
+    assert data["extracted_text"] == ""
+    assert any(img.get("path") for img in data["images"])  # the file itself -> Vision
+
+
 def test_extractor_docx_happy_path(tmp_path) -> None:
     """DOCX: paragraphs AND table cells must be extracted (postmortems use tables)."""
     try:

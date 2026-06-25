@@ -57,9 +57,6 @@ async function main() {
     process.exit(1);
   }
 
-  const before = await latestExecution(apiBase, apiKey);
-  const beforeId = before?.id;
-
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
@@ -67,14 +64,13 @@ async function main() {
   await page.screenshot({ path: join(DOCS, "screenshot-form-cloud.png"), fullPage: true });
   console.log("saved form (pre-submit)");
 
-  const [fileChooser] = await Promise.all([
-    page.waitForEvent("filechooser"),
-    page.getByRole("button", { name: /Postmortem Document/i }).click(),
-  ]);
-  await fileChooser.setFiles(SAMPLE);
+  // Set the hidden <input type=file> directly (works regardless of the styled button).
+  await page.locator('input[type="file"]').setInputFiles(SAMPLE);
+  await page.waitForTimeout(500);
+  const submitTime = Date.now();
   await page.getByRole("button", { name: "Submit" }).click();
 
-  await page.waitForSelector("text=Form submitted", { timeout: 60000 }).catch(async () => {
+  await page.waitForSelector("text=/Received|submitted|analy/i", { timeout: 60000 }).catch(async () => {
     await page.waitForTimeout(3000);
   });
   await page.screenshot({ path: join(DOCS, "screenshot-form-success.png"), fullPage: true });
@@ -82,11 +78,16 @@ async function main() {
 
   await browser.close();
 
+  // Accept only an execution that STARTED after we clicked submit (avoids latching
+  // onto an older execution still in the list).
   let exec = null;
   for (let i = 0; i < 12; i++) {
     await new Promise((r) => setTimeout(r, 5000));
-    exec = await latestExecution(apiBase, apiKey);
-    if (exec?.id && String(exec.id) !== String(beforeId)) break;
+    const latest = await latestExecution(apiBase, apiKey);
+    if (latest?.id && new Date(latest.startedAt).getTime() >= submitTime - 10000) {
+      exec = latest;
+      break;
+    }
   }
   if (!exec?.id) throw new Error("No new execution detected after form submit");
   console.log(`new execution: ${exec.id} status=${exec.status}`);

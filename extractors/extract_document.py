@@ -140,6 +140,22 @@ def extract_text(path: str, file_type: str) -> dict:
     }
 
 
+IMAGE_EXTS = ("png", "jpg", "jpeg", "gif", "webp", "bmp", "tif", "tiff")
+
+
+def extract_image(path: str, file_type: str) -> dict:
+    """A standalone image (e.g. a SIEM dashboard screenshot) is Vision-only: it
+    has no text layer, but the file itself is the image the Vision branch reads."""
+    return {
+        "filename": os.path.basename(path),
+        "file_type": file_type,
+        "extracted_text": "",
+        "char_count": 0,
+        "images": [{"path": path, "page": 0}],
+        "ok": True,
+    }
+
+
 def extract(path: str, image_dir: str) -> dict:
     if not os.path.isfile(path):
         return _err(os.path.basename(path), "unknown", f"file not found: {path}")
@@ -153,6 +169,8 @@ def extract(path: str, image_dir: str) -> dict:
         result = extract_docx(path)
     elif ext in ("txt", "md", "markdown", "log"):
         result = extract_text(path, ext)
+    elif ext in IMAGE_EXTS:
+        result = extract_image(path, ext)
     else:
         return _err(os.path.basename(path), ext, f"unsupported file type: {ext}")
 
