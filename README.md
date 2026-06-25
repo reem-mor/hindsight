@@ -262,7 +262,7 @@ node scripts\capture_screenshots.mjs
 node scripts\e2e_cloud_form.mjs
 ```
 
-**CI** (`.github/workflows/test.yml`): pytest · ruff · node-body tests · optional Cloud audit.
+**CI** (`.github/workflows/test.yml`): pytest (enrichment + extractor) · node-body tests · ruff lint.
 
 ---
 

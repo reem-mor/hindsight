@@ -48,26 +48,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install extractor deps
-        run: pip install pymupdf pdfplumber python-docx
+        run: pip install pymupdf python-docx
       - name: Run extractor tests
         run: pytest tests/test_extractor.py -q
-
-  n8n-cloud-audit:
-    name: n8n Cloud audit (optional)
-    runs-on: ubuntu-latest
-    if: ${{ secrets.N8N_API_KEY != '' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install audit deps
-        run: pip install httpx python-dotenv
-      - name: Run read-only Cloud audit
-        env:
-          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
-          N8N_API_URL: https://reemmor.app.n8n.cloud
-        run: python scripts/audit_n8n_cloud.py
 
   lint:
     name: Ruff lint (enrichment-api)
