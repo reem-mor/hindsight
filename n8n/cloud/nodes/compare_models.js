@@ -8,7 +8,9 @@ for (let idx = 0; idx < flashItems.length; idx++) {
   const pro = (proItems[idx] && proItems[idx].json) ? proItems[idx].json : {};
 
   function diffField(a, b, path, diffs) {
-    if (typeof a !== typeof b) {
+    // typeof [] === typeof {} === "object", so also compare array-ness, else a
+    // dict-vs-list disagreement yields spurious per-key diffs instead of 1 mismatch.
+    if (typeof a !== typeof b || Array.isArray(a) !== Array.isArray(b)) {
       diffs.push({ field: path || "root", flash: a, pro: b, kind: "type_mismatch" });
       return;
     }
@@ -38,9 +40,27 @@ for (let idx = 0; idx < flashItems.length; idx++) {
   const flashConf = Number(flash.confidence_score || 0);
   const proConf = Number(pro.confidence_score || 0);
 
+  // Jaccard overlap of entity values (parity with compare.py).
+  function entitySet(e) {
+    const s = new Set();
+    if (e && typeof e === "object") {
+      Object.keys(e).forEach(function (k) {
+        if (Array.isArray(e[k])) e[k].forEach(function (v) { s.add(String(v)); });
+      });
+    }
+    return s;
+  }
+  const fSet = entitySet(flash.entities);
+  const pSet = entitySet(pro.entities);
+  const union = new Set([...fSet, ...pSet]);
+  let inter = 0;
+  fSet.forEach(function (v) { if (pSet.has(v)) inter++; });
+  const entityOverlap = union.size ? Math.round((inter / union.size) * 10000) / 10000 : 1.0;
+
   const report = {
     classification_agreement: flashClass === proClass,
-    confidence_delta: proConf - flashConf,
+    confidence_delta: Math.round((proConf - flashConf) * 10000) / 10000,
+    entity_overlap_ratio: entityOverlap,
     field_diff_count: fieldDiffs.length,
     field_diffs: fieldDiffs.slice(0, 50),
     flash_summary: String(flash.summary || "").slice(0, 300),

@@ -112,7 +112,7 @@ Stable local credential IDs (override in `.env` if n8n assigns different IDs):
 > isn't used at all — swap that node for the native *Extract from File* node.
 
 ### What's already wired for you
-- **Retry / rate-limits** — both Gemini nodes: `retryOnFail`, 5 tries, 3 s backoff (survives 429s).
+- **Retry / rate-limits** — the main Gemini extraction node: `retryOnFail`, 5 tries, 3 s backoff (survives 429s). The optional Vision node retries 3× / 2 s with `onError: continue`.
 - **Multimodal** — embedded dashboard images are auto-detected and read by Gemini Vision;
   `onError: continue` means a vision miss degrades gracefully instead of failing the run.
 - **Severity is recomputed** — the FastAPI rubric overrides the reported severity; SEV1 pages

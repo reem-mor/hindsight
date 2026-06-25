@@ -17,6 +17,13 @@ from n8n_cloud_api import (
     patch_workflow_nodes,
     ensure_flatten_sheets_node,
 )
+from patch_cloud_workflow import (
+    patch_sev1_routing,
+    patch_gemini_retry,
+    patch_gemini_model,
+    patch_form_zip,
+    patch_form_copy,
+)
 
 
 def main() -> int:
@@ -33,10 +40,27 @@ def main() -> int:
     wf = api_get(base, key, f"/api/v1/workflows/{WORKFLOW_ID}")
     added_flatten = ensure_flatten_sheets_node(wf, root)
     n = patch_workflow_nodes(wf, bodies, sheet_id=sheet_id)
+
+    # Apply the node-CONFIG patches too, so the single documented deploy step makes
+    # BON-4 (retry), BON-7 (.zip), BON-8 (confidential/escalate paging) and the
+    # 404-safe model URL reproducible from committed scripts — not a separate manual run.
+    cfg = []
+    if patch_sev1_routing(wf):
+        cfg.append("BON-8 routing")
+    if patch_gemini_retry(wf):
+        cfg.append("BON-4 retry")
+    if patch_gemini_model(wf):
+        cfg.append("Gemini model URL")
+    if patch_form_zip(wf):
+        cfg.append("BON-7 .zip")
+    if patch_form_copy(wf):
+        cfg.append("form copy")
+
     payload = strip_workflow_meta(wf)
     api_request(base, key, "PUT", f"/api/v1/workflows/{WORKFLOW_ID}", payload)
     extra = " + Flatten for Sheets node" if added_flatten else ""
-    print(f"Synced {n} patch(es) to workflow {WORKFLOW_ID} (sheet {sheet_id}){extra}")
+    cfg_note = f" + config[{', '.join(cfg)}]" if cfg else ""
+    print(f"Synced {n} node-body patch(es) to workflow {WORKFLOW_ID} (sheet {sheet_id}){extra}{cfg_note}")
     return 0
 
 

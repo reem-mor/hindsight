@@ -6,7 +6,7 @@
 
 **Enterprise document intelligence pipeline:** n8n · Google Gemini 3 Flash · FastAPI · Google Sheets · Gmail · Supabase pgvector
 
-[![tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)](#verification)
+[![tests](https://img.shields.io/badge/tests-197%20passing-brightgreen)](#verification)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](#technology-stack)
 [![n8n](https://img.shields.io/badge/n8n-Cloud%20%2B%20Docker-orange)](#deployment-paths)
 [![Gemini](https://img.shields.io/badge/Gemini-3%20Flash%20%2B%20Vision-4285F4)](#technology-stack)
@@ -124,7 +124,7 @@ docker compose up --build -d    # enrichment :8000 · n8n :5678
 
 Compose reads **`env_file: .env`** for `GEMINI_API_KEY`, Supabase keys, and HINDSIGHT tuning vars. OAuth for Sheets/Gmail is configured inside n8n UI after first login — see [`n8n/SETUP.md`](n8n/SETUP.md).
 
-Drop files into `incoming_docs/` (or use `samples/`). Output markdown lands in `output_docs/`.
+Drop files into `incoming_docs/` (or use `samples/`). Each document writes a **JSON record + Markdown summary** to `output_docs/` (§3.1 / §4 Step 6).
 
 ---
 
@@ -134,7 +134,7 @@ Drop files into `incoming_docs/` (or use `samples/`). Output markdown lands in `
 # 1. Environment
 copy .env.example .env
 .\.venv\Scripts\python.exe -m pip install -r services\enrichment-api\requirements.txt
-.\.venv\Scripts\python.exe -m pip install pymupdf pdfplumber python-docx
+.\.venv\Scripts\python.exe -m pip install pymupdf python-docx
 
 # 2. Run tests (CI parity)
 .\.venv\Scripts\python.exe -m pytest services\enrichment-api -q
@@ -193,11 +193,11 @@ curl -s http://localhost:8000/enrich -H "Content-Type: application/json" -d '{
   "document_id": "…uuid…",
   "computed_severity": "SEV1",          // floored up from the author's SEV3
   "severity_rationale": ["CVSS 9.8 (SEV1-class) (+5)", "severity floored to SEV1 by CVSS 9.8"],
-  "department": "SecOps",
+  "department": "NetSec",               // highest-tier resolved service owns it
   "sensitivity": "confidential",
   "routing_tag": "escalate",            // → high-priority page (BON-8)
   "cvss_score": 9.8, "cve_ids": ["CVE-2026-21841"],
-  "confidence_score": 0.5, "routing_tags": ["auto-filed","exec-escalation","page-oncall", …]
+  "confidence_score": 0.25, "routing_tags": ["auto-filed","exec-escalation","page-oncall", …]
 }
 ```
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timedelta, timezone
+from html import escape
 from typing import Any
 
 
@@ -18,9 +19,11 @@ def _parse_ts(value: str | None) -> datetime | None:
         return None
 
 
-def filter_last_24h(rows: list[dict[str, Any]], now: datetime | None = None) -> list[dict[str, Any]]:
+def filter_last_24h(
+    rows: list[dict[str, Any]], now: datetime | None = None, window_hours: int = 24
+) -> list[dict[str, Any]]:
     now = now or datetime.now(timezone.utc)
-    cutoff = now - timedelta(hours=24)
+    cutoff = now - timedelta(hours=window_hours)
     out: list[dict[str, Any]] = []
     for row in rows:
         ts = _parse_ts(str(row.get("processed_at", "")))
@@ -75,13 +78,13 @@ def build_digest_html(agg: dict[str, Any], window_hours: int = 24) -> str:
         if not counter:
             return '<li style="color:#64748b;">None in window</li>'
         return "".join(
-            f'<li style="margin:4px 0;"><strong>{k}</strong> · {v}</li>'
+            f'<li style="margin:4px 0;"><strong>{escape(str(k))}</strong> · {v}</li>'
             for k, v in sorted(counter.items())
         )
 
     files = agg.get("filenames") or []
     file_list = (
-        "".join(f'<li style="margin:4px 0;">{f}</li>' for f in files)
+        "".join(f'<li style="margin:4px 0;">{escape(str(f))}</li>' for f in files)
         if files
         else '<li style="color:#64748b;">None in window</li>'
     )

@@ -69,6 +69,12 @@ const cmpDup = await runCompare({ confidence_score: 0, summary: 'a' }, { confide
 const confDiffs = cmpDup.field_diffs.filter((d) => d.field === 'confidence_score');
 ok('compare.no_duplicate_diff', confDiffs.length === 1, 'count=' + confDiffs.length);
 
+// dict-vs-list disagreement => ONE type_mismatch (not spurious per-key diffs); entity overlap present
+const cmpType = await runCompare({ entities: { systems: ['mail'] } }, { entities: ['mail'] });
+const entDiffs = cmpType.field_diffs.filter((d) => d.field === 'entities');
+ok('compare.dict_vs_list_one_mismatch', entDiffs.length === 1 && entDiffs[0].kind === 'type_mismatch', JSON.stringify(entDiffs));
+ok('compare.entity_overlap_present', typeof cmpType.entity_overlap_ratio === 'number');
+
 // unzip fan-out covered by services/enrichment-api/tests/test_batch.py + prepare.js zip path
 
 const total = pass + failures.length;

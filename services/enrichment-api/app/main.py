@@ -290,7 +290,7 @@ def compare_endpoint(payload: CompareRequest) -> CompareResponse:
 
 @app.post("/digest/preview", response_model=DigestPreviewResponse, tags=["bonus"])
 def digest_preview_endpoint(payload: DigestPreviewRequest) -> DigestPreviewResponse:
-    recent = filter_last_24h(payload.rows)
+    recent = filter_last_24h(payload.rows, window_hours=payload.window_hours)
     agg = aggregate_digest(recent)
     html = build_digest_html(agg, window_hours=payload.window_hours)
     subject = f"HINDSIGHT daily digest — {agg.get('total', 0)} incidents (last {payload.window_hours}h)"

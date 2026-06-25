@@ -44,6 +44,20 @@ def test_aggregate_digest_derives_severity_from_sheet_columns() -> None:
     assert agg["by_severity"] == {"SEV1": 2, "SEV3": 1}
 
 
+def test_digest_window_hours_respected() -> None:
+    now = datetime(2026, 6, 23, 12, 0, tzinfo=timezone.utc)
+    rows = [{"processed_at": "2026-06-22T09:00:00+00:00", "classification": "x"}]  # 27h ago
+    assert len(filter_last_24h(rows, now=now, window_hours=24)) == 0
+    assert len(filter_last_24h(rows, now=now, window_hours=48)) == 1
+
+
+def test_digest_html_escapes_untrusted() -> None:
+    agg = aggregate_digest([{"classification": "<script>alert(1)</script>", "filename": "<img src=x>"}])
+    html = build_digest_html(agg)
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;" in html
+
+
 def test_build_digest_html_contains_sections() -> None:
     agg = aggregate_digest([{"classification": "intrusion", "filename": "a.md"}])
     html = build_digest_html(agg)
