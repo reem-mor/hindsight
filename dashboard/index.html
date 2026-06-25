@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>HINDSIGHT · SOC Console — live incident registry</title>
 <!--
-  BON-3 Live Dashboard. Reads the published Google Sheets "Incidents" CSV and renders
-  live SecOps stats + charts. Pass ?csv=<published-sheet-csv-url>; falls back to the
-  committed fixture, then to an embedded sample. Every metric is derived ONLY from the
-  14 registry columns (severity is recovered from cvss_score / routing_tag).
-  Design: "SOC Console" — industrial-utilitarian, neon-on-black, monospace data.
-  Charts rendered with Chart.js 4.4.
+  BON-3 Live Dashboard — interactive SOC console. Reads the published Google Sheets
+  "Incidents" CSV (?csv=<url>; falls back to the committed fixture, then an embedded
+  sample). Every metric derives ONLY from the 14 registry columns (severity recovered
+  from cvss_score / routing_tag). Charts rendered with Chart.js 4.4.
+  Interactions: animated KPIs · click any chart to cross-filter · time-trend by severity ·
+  registry search + sortable columns · active-filter pills. Design: industrial neon-on-black.
 -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,116 +18,115 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #07090d;
-    --panel: #0d1117;
-    --panel-2: #11161f;
-    --line: #1b2532;
-    --ink: #e6edf3;
-    --muted: #7d8da3;
-    --faint: #4a586b;
-    --teal: #2de2c5;
-    --red: #ff3b5c;
-    --amber: #ffb020;
-    --yellow: #ffe14d;
-    --green: #3ddc91;
-    --violet: #8b7bff;
-    --display: "Space Grotesk", system-ui, sans-serif;
-    --mono: "JetBrains Mono", ui-monospace, monospace;
+    --bg:#07090d; --panel:#0d1117; --panel-2:#11161f; --line:#1b2532; --line-2:#243246;
+    --ink:#e6edf3; --muted:#7d8da3; --faint:#4a586b;
+    --teal:#2de2c5; --red:#ff3b5c; --amber:#ffb020; --yellow:#ffe14d; --green:#3ddc91; --violet:#8b7bff;
+    --display:"Space Grotesk",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--display); }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--display); }
   body {
+    min-height:100vh;
     background-image:
-      radial-gradient(1200px 600px at 80% -10%, rgba(45,226,197,.06), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, rgba(255,59,92,.06), transparent 60%);
-    min-height: 100vh;
+      radial-gradient(1200px 600px at 82% -12%, rgba(45,226,197,.07), transparent 60%),
+      radial-gradient(900px 520px at -12% 112%, rgba(255,59,92,.06), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 3px);
   }
-  a { color: var(--teal); text-decoration: none; }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 22px 22px 60px; }
+  a { color:var(--teal); text-decoration:none; }
+  .wrap { max-width:1280px; margin:0 auto; padding:22px 22px 64px; }
 
-  /* ---- header ---- */
-  header { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-  .brand { display: flex; align-items: baseline; gap: 12px; }
-  .brand h1 { font-size: 20px; letter-spacing: .14em; margin: 0; font-weight: 700; }
-  .brand .sub { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .08em; }
-  .spacer { flex: 1; }
-  .live { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; color: var(--teal); letter-spacing: .12em; text-transform: uppercase; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 0 rgba(45,226,197,.7); animation: pulse 2s infinite; }
+  header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding-bottom:16px; border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:baseline; gap:12px; }
+  .brand h1 { font-size:20px; letter-spacing:.16em; margin:0; font-weight:700; }
+  .brand .sub { font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.08em; }
+  .spacer { flex:1; }
+  .live { display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; color:var(--teal); letter-spacing:.12em; text-transform:uppercase; }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--teal); animation:pulse 2s infinite; }
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(45,226,197,.55)} 70%{box-shadow:0 0 0 9px rgba(45,226,197,0)} 100%{box-shadow:0 0 0 0 rgba(45,226,197,0)} }
-  .src { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+  .btn { font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--panel); border:1px solid var(--line); padding:6px 11px; border-radius:8px; cursor:pointer; transition:.15s; }
+  .btn:hover { color:var(--ink); border-color:var(--line-2); }
+  .src { font-family:var(--mono); font-size:10.5px; color:var(--faint); }
 
-  /* ---- filters ---- */
-  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 18px; }
-  .chip { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--muted); background: var(--panel); border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: .15s; }
-  .chip:hover { color: var(--ink); border-color: #2b3a4d; }
-  .chip[aria-pressed="true"] { color: var(--bg); background: var(--teal); border-color: var(--teal); font-weight: 600; }
-  .chip.red[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: #fff; }
+  /* active-filter bar */
+  .activebar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:14px 0 16px; min-height:30px; }
+  .pill { font-family:var(--mono); font-size:11px; color:var(--bg); background:var(--teal); border-radius:999px; padding:4px 10px; display:inline-flex; gap:7px; align-items:center; cursor:pointer; }
+  .pill.red { background:var(--red); color:#fff; } .pill.amber { background:var(--amber); color:#1a1206; }
+  .pill .x { font-weight:700; opacity:.7; }
+  .pill:hover .x { opacity:1; }
+  .hintline { font-family:var(--mono); font-size:11px; color:var(--faint); }
 
-  /* ---- KPI row ---- */
-  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
-  .kpi { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: 14px; padding: 16px 16px 14px; position: relative; overflow: hidden; }
-  .kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--teal)); }
-  .kpi .label { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
-  .kpi .val { font-size: 34px; font-weight: 700; margin-top: 8px; line-height: 1; color: var(--accent, var(--ink)); font-variant-numeric: tabular-nums; }
-  .kpi .meta { font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-top: 7px; }
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+  .kpi { background:linear-gradient(180deg,var(--panel-2),var(--panel)); border:1px solid var(--line); border-radius:14px; padding:15px 16px 13px; position:relative; overflow:hidden; transition:.18s; }
+  .kpi:hover { border-color:var(--line-2); transform:translateY(-2px); }
+  .kpi::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent,var(--teal)); }
+  .kpi .label { font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+  .kpi .val { font-size:34px; font-weight:700; margin-top:7px; line-height:1; color:var(--accent,var(--ink)); font-variant-numeric:tabular-nums; }
+  .kpi .meta { font-family:var(--mono); font-size:10.5px; color:var(--faint); margin-top:6px; }
 
-  /* ---- charts grid ---- */
-  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; margin-top: 16px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-height: 0; }
-  .card.span4 { grid-column: span 4; } .card.span6 { grid-column: span 6; }
-  .card.span8 { grid-column: span 8; } .card.span12 { grid-column: span 12; }
-  .card h2 { font-size: 13px; letter-spacing: .06em; margin: 0 0 2px; font-weight: 600; }
-  .card .hint { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-bottom: 12px; }
-  .chartbox { position: relative; height: 210px; }
+  .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:14px; margin-top:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .card.span4 { grid-column:span 4; } .card.span6 { grid-column:span 6; }
+  .card.span8 { grid-column:span 8; } .card.span12 { grid-column:span 12; }
+  .card h2 { font-size:13px; letter-spacing:.06em; margin:0 0 2px; font-weight:600; }
+  .card .hint { font-family:var(--mono); font-size:10px; color:var(--faint); margin-bottom:12px; }
+  .chartbox { position:relative; height:208px; }
+  .chartbox.lg { height:230px; }
+  canvas { cursor:pointer; }
 
-  /* ---- registry table ---- */
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  thead th { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
-  tbody td { padding: 9px 10px; border-bottom: 1px solid #141b25; vertical-align: top; }
-  tbody tr:hover { background: #0f151e; }
-  .tablebox { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; }
-  .sev { font-family: var(--mono); font-weight: 600; font-size: 11px; padding: 2px 8px; border-radius: 6px; display: inline-block; }
-  .sev.SEV1 { color: var(--red); background: rgba(255,59,92,.13); }
-  .sev.SEV2 { color: var(--amber); background: rgba(255,176,32,.13); }
-  .sev.SEV3 { color: var(--yellow); background: rgba(255,225,77,.12); }
-  .sev.SEV4 { color: var(--green); background: rgba(61,220,145,.12); }
-  .sev.NA   { color: var(--faint); background: rgba(74,88,107,.15); }
-  .tag { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
-  .tag.conf { color: var(--red); } .tag.esc { color: var(--amber); }
-  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-  .empty { color: var(--faint); padding: 30px; text-align: center; font-family: var(--mono); font-size: 12px; }
-  footer { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--faint); display: flex; gap: 18px; flex-wrap: wrap; }
-  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2,1fr); } .card.span4,.card.span6,.card.span8 { grid-column: span 12; } }
+  .reghead { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+  .search { font-family:var(--mono); font-size:12px; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:7px 11px; width:230px; }
+  .search::placeholder { color:var(--faint); }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  thead th { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); cursor:pointer; user-select:none; white-space:nowrap; }
+  thead th:hover { color:var(--ink); }
+  thead th .ar { color:var(--teal); }
+  tbody td { padding:9px 10px; border-bottom:1px solid #141b25; vertical-align:top; }
+  tbody tr:hover { background:#0f151e; }
+  .tablebox { max-height:430px; overflow:auto; border:1px solid var(--line); border-radius:12px; }
+  .sev { font-family:var(--mono); font-weight:600; font-size:11px; padding:2px 8px; border-radius:6px; display:inline-block; }
+  .sev.SEV1{color:var(--red);background:rgba(255,59,92,.13)} .sev.SEV2{color:var(--amber);background:rgba(255,176,32,.13)}
+  .sev.SEV3{color:var(--yellow);background:rgba(255,225,77,.12)} .sev.SEV4{color:var(--green);background:rgba(61,220,145,.12)}
+  .sev.NA{color:var(--faint);background:rgba(74,88,107,.15)}
+  .tag { font-family:var(--mono); font-size:10.5px; color:var(--muted); }
+  .tag.conf{color:var(--red)} .tag.esc{color:var(--amber)}
+  .mono { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .empty { color:var(--faint); padding:30px; text-align:center; font-family:var(--mono); font-size:12px; }
+  footer { margin-top:24px; padding-top:16px; border-top:1px solid var(--line); font-family:var(--mono); font-size:11px; color:var(--faint); display:flex; gap:18px; flex-wrap:wrap; }
+  @media (max-width:980px){ .kpis{grid-template-columns:repeat(2,1fr)} .card.span4,.card.span6,.card.span8{grid-column:span 12} }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">
-      <h1>HINDSIGHT</h1>
-      <span class="sub">SOC&nbsp;CONSOLE · cyber incident registry</span>
-    </div>
+    <div class="brand"><h1>HINDSIGHT</h1><span class="sub">SOC&nbsp;CONSOLE · cyber incident registry</span></div>
     <span class="spacer"></span>
     <span class="live"><span class="dot"></span><span id="live-label">LIVE</span></span>
     <span class="src" id="src">source: …</span>
+    <button class="btn" id="refresh" title="Re-fetch the registry">↻ refresh</button>
   </header>
 
-  <div class="filters" id="filters" role="group" aria-label="severity filter"></div>
+  <div class="activebar" id="activebar"><span class="hintline">// click any chart segment to cross-filter · search the registry below</span></div>
 
   <div class="kpis" id="kpis"></div>
 
   <div class="grid">
-    <div class="card span4"><h2>Severity mix</h2><div class="hint">// from CVSS band · escalate→SEV1</div><div class="chartbox"><canvas id="c-sev"></canvas></div></div>
+    <div class="card span8"><h2>Incident volume &amp; severity over time</h2><div class="hint">// stacked by severity · per processing day</div><div class="chartbox lg"><canvas id="c-trend"></canvas></div></div>
+    <div class="card span4"><h2>Severity mix</h2><div class="hint">// from CVSS band · escalate→SEV1 · click to filter</div><div class="chartbox lg"><canvas id="c-sev"></canvas></div></div>
+
     <div class="card span4"><h2>Data sensitivity</h2><div class="hint">// public · internal · confidential</div><div class="chartbox"><canvas id="c-sens"></canvas></div></div>
-    <div class="card span4"><h2>Routing decisions</h2><div class="hint">// SecOps triage rubric</div><div class="chartbox"><canvas id="c-route"></canvas></div></div>
-    <div class="card span6"><h2>Incident types</h2><div class="hint">// classification</div><div class="chartbox"><canvas id="c-type"></canvas></div></div>
-    <div class="card span6"><h2>CVSS distribution</h2><div class="hint">// base-score buckets across the estate</div><div class="chartbox"><canvas id="c-cvss"></canvas></div></div>
+    <div class="card span4"><h2>Routing decisions</h2><div class="hint">// SecOps triage rubric · click to filter</div><div class="chartbox"><canvas id="c-route"></canvas></div></div>
+    <div class="card span4"><h2>CVSS distribution</h2><div class="hint">// base-score buckets across the estate</div><div class="chartbox"><canvas id="c-cvss"></canvas></div></div>
+
     <div class="card span12">
-      <h2>Incident registry <span class="mono" id="reg-count" style="color:var(--faint);font-size:12px"></span></h2>
-      <div class="hint">// one row per processed document · click a severity chip above to filter</div>
+      <div class="reghead">
+        <h2 style="margin:0">Incident registry <span class="mono" id="reg-count" style="color:var(--faint);font-size:12px"></span></h2>
+        <span class="spacer"></span>
+        <input class="search" id="search" placeholder="search filename / type / CVE…" />
+      </div>
+      <div class="hint" style="margin-bottom:10px">// one row per processed document · click a column header to sort</div>
       <div class="tablebox">
         <table>
-          <thead><tr><th>Severity</th><th>Document</th><th>Type</th><th>Dept</th><th>Sensitivity</th><th>Routing</th><th>CVSS</th><th>CVE</th><th>Processed</th></tr></thead>
+          <thead><tr id="reghead"></tr></thead>
           <tbody id="reg"></tbody>
         </table>
       </div>
@@ -136,27 +135,24 @@
 
   <footer>
     <span>data source: <b style="color:var(--muted)">Google Sheets · Incidents</b></span>
-    <a id="sheet-link" href="https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit" target="_blank">Open registry sheet ↗</a>
+    <a href="https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit" target="_blank">Open registry sheet ↗</a>
     <a href="https://reemmor.app.n8n.cloud/form/21593841-f8b8-43a2-88a8-8595ad3e2f39" target="_blank">Submit document ↗</a>
     <span class="spacer" style="flex:1"></span>
-    <span>HINDSIGHT · n8n + Gemini 3 Flash · BON-3</span>
+    <span id="updated"></span><span>HINDSIGHT · n8n + Gemini 3 Flash · BON-3</span>
   </footer>
 </div>
 
 <script>
-const C = getComputedStyle(document.documentElement);
-const col = (n) => C.getPropertyValue(n).trim();
+const C = getComputedStyle(document.documentElement), col = (n) => C.getPropertyValue(n).trim();
 const SEV_COLOR = { SEV1: col('--red'), SEV2: col('--amber'), SEV3: col('--yellow'), SEV4: col('--green'), 'N/A': col('--faint') };
+const SEV_ORDER = ['SEV1', 'SEV2', 'SEV3', 'SEV4', 'N/A'];
 
-// ---- robust CSV parse (handles quoted fields w/ commas + escaped quotes) ----
 function parseCSV(text) {
   const rows = []; let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
-    if (q) {
-      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
-      else field += c;
-    } else if (c === '"') q = true;
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += c; }
+    else if (c === '"') q = true;
     else if (c === ',') { row.push(field); field = ''; }
     else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
     else if (c !== '\r') field += c;
@@ -165,132 +161,149 @@ function parseCSV(text) {
   const header = (rows.shift() || []).map((h) => h.trim());
   return rows.filter((r) => r.some((c) => c.trim() !== '')).map((r) => Object.fromEntries(header.map((h, i) => [h, (r[i] ?? '').trim()])));
 }
-
-function severityOf(r) {
-  const cv = parseFloat(r.cvss_score);
-  if (!isNaN(cv) && cv > 0) return cv >= 9 ? 'SEV1' : cv >= 7 ? 'SEV2' : cv >= 4 ? 'SEV3' : 'SEV4';
-  if ((r.routing_tag || '') === 'escalate') return 'SEV1';
-  return 'N/A';
-}
+const severityOf = (r) => { const v = parseFloat(r.cvss_score); if (!isNaN(v) && v > 0) return v >= 9 ? 'SEV1' : v >= 7 ? 'SEV2' : v >= 4 ? 'SEV3' : 'SEV4'; return (r.routing_tag || '') === 'escalate' ? 'SEV1' : 'N/A'; };
 const countBy = (arr, fn) => arr.reduce((m, x) => { const k = fn(x) || '—'; m[k] = (m[k] || 0) + 1; return m; }, {});
+const esc = (s) => String(s == null ? '' : s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
+// ---- cross-filter state ----
+let ALL = [], charts = {};
+const state = { severity: null, sensitivity: null, classification: null, routing_tag: null, search: '', sort: 'severity', dir: 1 };
+function visible() {
+  return ALL.filter((r) =>
+    (!state.severity || severityOf(r) === state.severity) &&
+    (!state.sensitivity || (r.sensitivity || 'internal') === state.sensitivity) &&
+    (!state.classification || (r.classification || 'other') === state.classification) &&
+    (!state.routing_tag || (r.routing_tag || 'auto-approved') === state.routing_tag) &&
+    (!state.search || [r.filename, r.classification, r.cve_ids, r.summary, r.department].join(' ').toLowerCase().includes(state.search))
+  );
+}
+function toggle(facet, val) { state[facet] = state[facet] === val ? null : val; refresh(); }
+
+// ---- charts ----
 function chartDefaults() { Chart.defaults.color = col('--muted'); Chart.defaults.font.family = 'JetBrains Mono'; Chart.defaults.font.size = 11; Chart.defaults.borderColor = col('--line'); }
-let charts = {};
-function donut(id, labels, data, colors) {
+function clickFilter(facet, labels) { return (e, els) => { if (els && els.length) toggle(facet, labels[els[0].index]); }; }
+function donut(id, labels, data, colors, facet) {
   if (charts[id]) charts[id].destroy();
   charts[id] = new Chart(document.getElementById(id), {
     type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: col('--panel'), borderWidth: 3, hoverOffset: 6 }] },
-    options: { cutout: '64%', plugins: { legend: { position: 'right', labels: { boxWidth: 10, boxHeight: 10, padding: 12 } } }, animation: { duration: 600 } },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: col('--panel'), borderWidth: 3, hoverOffset: 8 }] },
+    options: { cutout: '64%', onClick: facet ? clickFilter(facet, labels) : undefined,
+      plugins: { legend: { position: 'right', labels: { boxWidth: 10, boxHeight: 10, padding: 11 } } }, animation: { duration: 500 } },
   });
 }
-function bars(id, labels, data, color, horizontal) {
+function bars(id, labels, data, color, horizontal, facet) {
   if (charts[id]) charts[id].destroy();
   charts[id] = new Chart(document.getElementById(id), {
     type: 'bar',
-    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 5, barPercentage: .72, categoryPercentage: .8 }] },
-    options: {
-      indexAxis: horizontal ? 'y' : 'x',
+    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 5, barPercentage: .72, categoryPercentage: .82 }] },
+    options: { indexAxis: horizontal ? 'y' : 'x', onClick: facet ? clickFilter(facet, labels) : undefined,
       plugins: { legend: { display: false } },
       scales: { x: { grid: { color: col('--line'), drawTicks: false } }, y: { grid: { color: 'transparent' }, beginAtZero: true, ticks: { precision: 0 } } },
-      animation: { duration: 600 },
-    },
+      animation: { duration: 500 } },
+  });
+}
+function trend(rows) {
+  const days = {}; // day -> {SEV1:n,...}
+  rows.forEach((r) => { const d = (r.processed_at || '').slice(0, 10) || '—'; (days[d] = days[d] || {})[severityOf(r)] = (days[d]?.[severityOf(r)] || 0) + 1; });
+  const labels = Object.keys(days).sort().slice(-12);
+  const ds = ['SEV1', 'SEV2', 'SEV3', 'SEV4'].map((s) => ({ label: s, data: labels.map((d) => days[d]?.[s] || 0), backgroundColor: SEV_COLOR[s], borderRadius: 3, stack: 'x' }));
+  if (charts['c-trend']) charts['c-trend'].destroy();
+  charts['c-trend'] = new Chart(document.getElementById('c-trend'), {
+    type: 'bar', data: { labels: labels.map((d) => d.slice(5)), datasets: ds },
+    options: { plugins: { legend: { position: 'top', labels: { boxWidth: 9, boxHeight: 9, padding: 10 } } },
+      scales: { x: { stacked: true, grid: { color: 'transparent' } }, y: { stacked: true, beginAtZero: true, grid: { color: col('--line') }, ticks: { precision: 0 } } },
+      animation: { duration: 600 } },
   });
 }
 
-function render(rows) {
-  const total = rows.length;
-  const sev = countBy(rows, severityOf);
-  const sens = countBy(rows, (r) => r.sensitivity || 'internal');
-  const route = countBy(rows, (r) => r.routing_tag || 'auto-approved');
-  const type = countBy(rows, (r) => r.classification || 'other');
-  const conf = sens.confidential || 0;
-  const esc = route.escalate || 0;
-  const crit = rows.filter((r) => parseFloat(r.cvss_score) >= 9).length;
-  const cvssVals = rows.map((r) => parseFloat(r.cvss_score)).filter((v) => !isNaN(v) && v > 0);
-  const avgConf = total ? (rows.reduce((s, r) => s + (parseFloat(r.confidence_score) || 0), 0) / total) : 0;
+function animateVal(el, to) {
+  const dur = 650, t0 = performance.now(), from = 0, dec = String(to).includes('.') ? 2 : 0;
+  (function step(t) { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = (from + (to - from) * e).toFixed(dec); if (k < 1) requestAnimationFrame(step); })(t0);
+}
 
-  const kpi = (label, val, meta, accent) => `<div class="kpi" style="--accent:${accent}"><div class="label">${label}</div><div class="val">${val}</div><div class="meta">${meta}</div></div>`;
-  document.getElementById('kpis').innerHTML =
-    kpi('Incidents', total, 'documents processed', col('--teal')) +
-    kpi('Critical', crit, 'CVSS ≥ 9.0', col('--red')) +
-    kpi('Confidential', conf, total ? Math.round(conf / total * 100) + '% of estate' : '—', col('--red')) +
-    kpi('Escalated', esc, 'paged to on-call', col('--amber')) +
-    kpi('Avg confidence', avgConf.toFixed(2), 'extraction quality', col('--violet'));
+function renderKpis(rows) {
+  const sens = countBy(rows, (r) => r.sensitivity || 'internal'), route = countBy(rows, (r) => r.routing_tag || 'auto-approved');
+  const conf = sens.confidential || 0, esc2 = route.escalate || 0, crit = rows.filter((r) => parseFloat(r.cvss_score) >= 9).length;
+  const avg = rows.length ? rows.reduce((s, r) => s + (parseFloat(r.confidence_score) || 0), 0) / rows.length : 0;
+  const defs = [
+    ['Incidents', rows.length, 'in current view', col('--teal')],
+    ['Critical', crit, 'CVSS ≥ 9.0', col('--red')],
+    ['Confidential', conf, rows.length ? Math.round(conf / rows.length * 100) + '% of view' : '—', col('--red')],
+    ['Escalated', esc2, 'paged to on-call', col('--amber')],
+    ['Avg confidence', +avg.toFixed(2), 'extraction quality', col('--violet')],
+  ];
+  document.getElementById('kpis').innerHTML = defs.map(([l, v, m, a], i) =>
+    `<div class="kpi" style="--accent:${a}"><div class="label">${l}</div><div class="val" id="kpi${i}">0</div><div class="meta">${m}</div></div>`).join('');
+  defs.forEach(([, v], i) => animateVal(document.getElementById('kpi' + i), v));
+}
 
-  const sevOrder = ['SEV1', 'SEV2', 'SEV3', 'SEV4', 'N/A'].filter((k) => sev[k]);
-  donut('c-sev', sevOrder, sevOrder.map((k) => sev[k]), sevOrder.map((k) => SEV_COLOR[k]));
-  const sensOrder = ['confidential', 'internal', 'public'].filter((k) => sens[k]);
-  donut('c-sens', sensOrder, sensOrder.map((k) => sens[k]), [col('--red'), col('--amber'), col('--green')]);
-  const rk = Object.keys(route).sort((a, b) => route[b] - route[a]);
-  bars('c-route', rk, rk.map((k) => route[k]), rk.map((k) => k === 'escalate' || k === 'page-oncall' ? col('--red') : k === 'needs-review' ? col('--amber') : col('--teal')), true);
-  const tk = Object.keys(type).sort((a, b) => type[b] - type[a]);
-  bars('c-type', tk, tk.map((k) => type[k]), col('--teal'), true);
-  const buckets = [0, 0, 0, 0];
-  cvssVals.forEach((v) => { buckets[v >= 9 ? 3 : v >= 7 ? 2 : v >= 4 ? 1 : 0]++; });
-  bars('c-cvss', ['0–3.9 low', '4–6.9 med', '7–8.9 high', '9–10 crit'], buckets, [col('--green'), col('--yellow'), col('--amber'), col('--red')], false);
-
-  document.getElementById('reg-count').textContent = `(${total})`;
-  const esc2 = (s) => String(s == null ? '' : s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-  const sevSort = { SEV1: 0, SEV2: 1, SEV3: 2, SEV4: 3, 'N/A': 4 };
-  const bodyHtml = rows.slice().sort((a, b) => sevSort[severityOf(a)] - sevSort[severityOf(b)]).map((r) => {
-    const s = severityOf(r);
-    const when = (r.processed_at || '').replace('T', ' ').slice(0, 16);
+const COLS = [['severity', 'Severity'], ['filename', 'Document'], ['classification', 'Type'], ['department', 'Dept'], ['sensitivity', 'Sensitivity'], ['routing_tag', 'Routing'], ['cvss_score', 'CVSS'], ['cve_ids', 'CVE'], ['processed_at', 'Processed']];
+function renderTable(rows) {
+  document.getElementById('reghead').innerHTML = COLS.map(([k, t]) =>
+    `<th data-k="${k}">${t}${state.sort === k ? ` <span class="ar">${state.dir > 0 ? '▲' : '▼'}</span>` : ''}</th>`).join('');
+  document.querySelectorAll('#reghead th').forEach((th) => th.onclick = () => { const k = th.dataset.k; state.dir = state.sort === k ? -state.dir : 1; state.sort = k; refresh(); });
+  const sevRank = { SEV1: 0, SEV2: 1, SEV3: 2, SEV4: 3, 'N/A': 4 };
+  const key = (r) => state.sort === 'severity' ? sevRank[severityOf(r)] : state.sort === 'cvss_score' ? (parseFloat(r.cvss_score) || -1) : String(r[state.sort] || '');
+  const sorted = rows.slice().sort((a, b) => { const x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : 0) * state.dir; });
+  document.getElementById('reg-count').textContent = `(${rows.length}${ALL.length !== rows.length ? ' / ' + ALL.length : ''})`;
+  document.getElementById('reg').innerHTML = sorted.map((r) => {
+    const s = severityOf(r), when = (r.processed_at || '').replace('T', ' ').slice(0, 16);
     return `<tr>
       <td><span class="sev ${s.replace('/', '')}">${s}</span></td>
-      <td>${esc2(r.filename) || '<span class="tag">—</span>'}</td>
-      <td class="tag">${esc2(r.classification)}</td>
-      <td class="tag">${esc2(r.department)}</td>
-      <td class="tag ${r.sensitivity === 'confidential' ? 'conf' : ''}">${esc2(r.sensitivity)}</td>
-      <td class="tag ${r.routing_tag === 'escalate' ? 'esc' : ''}">${esc2(r.routing_tag)}</td>
-      <td class="mono">${esc2(r.cvss_score) || '·'}</td>
-      <td class="mono">${esc2(r.cve_ids) || '·'}</td>
-      <td class="mono" style="color:var(--faint)">${esc2(when)}</td>
-    </tr>`;
-  }).join('');
-  document.getElementById('reg').innerHTML = bodyHtml || `<tr><td colspan="9" class="empty">No incidents match this filter.</td></tr>`;
+      <td>${esc(r.filename) || '<span class="tag">—</span>'}</td>
+      <td class="tag">${esc(r.classification)}</td><td class="tag">${esc(r.department)}</td>
+      <td class="tag ${r.sensitivity === 'confidential' ? 'conf' : ''}">${esc(r.sensitivity)}</td>
+      <td class="tag ${r.routing_tag === 'escalate' ? 'esc' : ''}">${esc(r.routing_tag)}</td>
+      <td class="mono">${esc(r.cvss_score) || '·'}</td><td class="mono">${esc(r.cve_ids) || '·'}</td>
+      <td class="mono" style="color:var(--faint)">${esc(when)}</td></tr>`;
+  }).join('') || `<tr><td colspan="9" class="empty">No incidents match the current filter.</td></tr>`;
 }
 
-let ALL = [], activeSev = 'all';
-function applyFilter() { render(activeSev === 'all' ? ALL : ALL.filter((r) => severityOf(r) === activeSev)); }
-function buildFilters() {
-  const sevs = ['all', 'SEV1', 'SEV2', 'SEV3', 'SEV4'];
-  document.getElementById('filters').innerHTML = sevs.map((s) =>
-    `<button class="chip ${s === 'SEV1' ? 'red' : ''}" data-sev="${s}" aria-pressed="${s === 'all'}">${s === 'all' ? 'ALL' : s}</button>`).join('');
-  document.querySelectorAll('.chip').forEach((b) => b.onclick = () => {
-    activeSev = b.dataset.sev;
-    document.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b));
-    applyFilter();
-  });
+function renderActiveBar() {
+  const facets = [['severity', state.severity, 'red'], ['sensitivity', state.sensitivity, ''], ['classification', state.classification, ''], ['routing_tag', state.routing_tag, 'amber']].filter((f) => f[1]);
+  const ab = document.getElementById('activebar');
+  if (!facets.length && !state.search) { ab.innerHTML = '<span class="hintline">// click any chart segment to cross-filter · search the registry below</span>'; return; }
+  ab.innerHTML = facets.map(([f, v, c]) => `<span class="pill ${c}" data-f="${f}">${f.replace('_', ' ')}: ${esc(v)} <span class="x">✕</span></span>`).join('') +
+    (state.search ? `<span class="pill" data-f="search">“${esc(state.search)}” <span class="x">✕</span></span>` : '') +
+    `<button class="btn" id="clearall">clear all</button>`;
+  document.querySelectorAll('.pill').forEach((p) => p.onclick = () => { const f = p.dataset.f; if (f === 'search') { state.search = ''; document.getElementById('search').value = ''; } else state[f] = null; refresh(); });
+  document.getElementById('clearall').onclick = () => { Object.assign(state, { severity: null, sensitivity: null, classification: null, routing_tag: null, search: '' }); document.getElementById('search').value = ''; refresh(); };
+}
+
+function refresh() {
+  const rows = visible();
+  renderActiveBar(); renderKpis(rows); renderTable(rows);
+  const sev = countBy(rows, severityOf), sens = countBy(rows, (r) => r.sensitivity || 'internal'), route = countBy(rows, (r) => r.routing_tag || 'auto-approved'), type = countBy(rows, (r) => r.classification || 'other');
+  trend(rows);
+  const so = SEV_ORDER.filter((k) => sev[k]); donut('c-sev', so, so.map((k) => sev[k]), so.map((k) => SEV_COLOR[k]), 'severity');
+  const xo = ['confidential', 'internal', 'public'].filter((k) => sens[k]); donut('c-sens', xo, xo.map((k) => sens[k]), [col('--red'), col('--amber'), col('--green')], 'sensitivity');
+  const rk = Object.keys(route).sort((a, b) => route[b] - route[a]); bars('c-route', rk, rk.map((k) => route[k]), rk.map((k) => /escalate|page/.test(k) ? col('--red') : k === 'needs-review' ? col('--amber') : col('--teal')), true, 'routing_tag');
+  const cv = rows.map((r) => parseFloat(r.cvss_score)).filter((v) => !isNaN(v) && v > 0); const bk = [0, 0, 0, 0]; cv.forEach((v) => bk[v >= 9 ? 3 : v >= 7 ? 2 : v >= 4 ? 1 : 0]++);
+  bars('c-cvss', ['0–3.9 low', '4–6.9 med', '7–8.9 high', '9–10 crit'], bk, [col('--green'), col('--yellow'), col('--amber'), col('--red')], false);
 }
 
 const EMBEDDED = `document_id,filename,file_type,processed_at,classification,department,sentiment,confidence_score,summary,routing_tag,sensitivity,action_items,cvss_score,cve_ids
-hs-001,vuln_scan_critical_openssl.md,md,2026-06-25T21:40:00Z,vulnerability-scan,NetSec,negative,0.92,Critical OpenSSL RCE on perimeter hosts,escalate,confidential,"[]",9.8,CVE-2026-21841
-hs-002,phishing_kyc_credential_harvest.md,md,2026-06-25T18:12:00Z,phishing,SecOps,negative,0.88,KYC credential-harvest campaign,escalate,confidential,"[]",,
-hs-003,siem_bruteforce_intrusion.md,md,2026-06-25T14:05:00Z,intrusion,Identity-Sec,negative,0.90,Brute-force SSH intrusion vs bastion,needs-review,internal,"[]",7.2,
-hs-004,edge_cdn_sev2_eu_errors.pdf,pdf,2026-06-25T09:40:00Z,degradation,NetSec,neutral,0.81,Edge CDN elevated 5xx in EU,auto-approved,public,"[]",4.5,
-hs-005,malware_beacon_c2.txt,txt,2026-06-24T22:30:00Z,malware,SecOps,negative,0.86,Endpoint beaconing to known C2,escalate,confidential,"[]",8.1,CVE-2026-30771
-hs-006,ddos_volumetric_waf.md,md,2026-06-24T16:50:00Z,ddos,NetSec,negative,0.79,Volumetric flood absorbed by WAF,needs-review,internal,"[]",,`;
+hs-001,vuln_scan_critical_openssl.md,md,2026-06-26T08:12:00Z,vulnerability-scan,NetSec,negative,0.94,Critical OpenSSL RCE,escalate,confidential,"[]",9.8,CVE-2026-21841
+hs-002,phishing_kyc_harvest.txt,txt,2026-06-26T05:18:00Z,phishing,SecOps,negative,0.88,KYC credential harvest,escalate,confidential,"[]",,
+hs-003,siem_bruteforce_bastion.md,md,2026-06-25T14:05:00Z,intrusion,Identity-Sec,negative,0.90,Brute-force SSH intrusion,needs-review,internal,"[]",7.2,
+hs-004,edge_cdn_eu_errors.pdf,pdf,2026-06-25T09:40:00Z,degradation,NetSec,neutral,0.81,Edge CDN 5xx,auto-approved,public,"[]",4.5,`;
 
-async function boot() {
-  chartDefaults();
-  buildFilters();
-  const params = new URLSearchParams(location.search);
-  const csvUrl = params.get('csv');
-  const srcEl = document.getElementById('src');
+async function load() {
+  const params = new URLSearchParams(location.search), csvUrl = params.get('csv');
   let text = null, label = '';
-  if (csvUrl) {
-    try { const res = await fetch(csvUrl); if (res.ok) { text = await res.text(); label = 'published Google Sheet'; } } catch (e) { /* fall through */ }
-  }
-  if (!text) {
-    try { const res = await fetch('fixtures/incidents.csv'); if (res.ok) { text = await res.text(); label = 'fixtures/incidents.csv'; } } catch (e) { /* fall through */ }
-  }
+  if (csvUrl) { try { const r = await fetch(csvUrl, { cache: 'no-store' }); if (r.ok) { text = await r.text(); label = 'published Google Sheet'; } } catch (e) {} }
+  if (!text) { try { const r = await fetch('fixtures/incidents.csv', { cache: 'no-store' }); if (r.ok) { text = await r.text(); label = 'fixtures/incidents.csv'; } } catch (e) {} }
   if (!text) { text = EMBEDDED; label = 'embedded sample'; document.getElementById('live-label').textContent = 'DEMO'; }
-  srcEl.textContent = 'source: ' + label;
+  document.getElementById('src').textContent = 'source: ' + label;
+  document.getElementById('updated').textContent = 'updated ' + new Date().toLocaleTimeString() + ' · ';
   ALL = parseCSV(text).filter((r) => r.document_id || r.filename);
-  applyFilter();
+  refresh();
 }
-boot();
+
+chartDefaults();
+document.getElementById('search').addEventListener('input', (e) => { state.search = e.target.value.trim().toLowerCase(); refresh(); });
+document.getElementById('refresh').onclick = load;
+load();
 </script>
 </body>
 </html>
