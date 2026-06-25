@@ -115,6 +115,12 @@ const VULN_CRITICAL = {
   ok('slo.breach_at_50', bAt.slo_impact.budget_breach === true);
   ok('slo.no_breach_below', bBel.slo_impact.budget_breach === false);
 
+  // 8b) Alias whole-word match (parity with routing.py): 'av' must not match 'average'
+  e = await enrich({ affected_services: ['average latency service'], incident_type: 'other', summary: 's', root_cause: 'x' });
+  eq('alias.no_overmatch', e.affected_services_resolved, []);
+  e = await enrich({ affected_services: ['our splunk siem cluster'], incident_type: 'other', summary: 's' });
+  eq('alias.wholeword_hit', e.affected_services_resolved, ['siem']);
+
   // 8) No catalogued service -> SLO null, but fingerprint still produced ------
   e = await enrich({ affected_services: ['nope-unknown'], incident_type: 'other', summary: 's', root_cause: 'x' });
   eq('noslo.target', e.slo_impact.slo_target, null);
@@ -214,6 +220,17 @@ const VULN_CRITICAL = {
   eq('parse.sentiment_default', p.sentiment, 'neutral');
   p = await parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify({ ...VALID_PARSE, sentiment: 'negative' }) }] } }] }, {});
   eq('parse.sentiment_valid', p.sentiment, 'negative');
+
+  // classification-only payload (no incident_type) maps to incident_type (no misroute to "other")
+  const CLASS_ONLY = { ...VALID_PARSE, classification: 'phishing' };
+  delete CLASS_ONLY.incident_type;
+  p = await parseNode({ candidates: [{ content: { parts: [{ text: JSON.stringify(CLASS_ONLY) }] } }] }, {});
+  eq('parse.classification_maps_type', p.incident_type, 'phishing');
+
+  // wrapping fence stripped but INNER backticks in a string value preserved
+  const withTicks = { ...VALID_PARSE, summary: 'blocked `iptables -A INPUT -s 1.2.3.4 -j DROP`' };
+  p = await parseNode({ candidates: [{ content: { parts: [{ text: FENCE + 'json\n' + JSON.stringify(withTicks) + '\n' + FENCE }] } }] }, {});
+  ok('parse.inner_backticks_kept', p.summary.indexOf('`iptables') !== -1, p.summary);
 
   // ---- sheet_row (Flatten for Sheets): strict 14-col contract + safe defaults
   const SHEET_KEYS = ["document_id","filename","file_type","processed_at","classification","department","sentiment","confidence_score","summary","routing_tag","sensitivity","action_items","cvss_score","cve_ids"];

@@ -11,9 +11,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const ENV_PATH = join(ROOT, ".env");
 const N8N = process.env.N8N_LOCAL_URL || "http://127.0.0.1:5678";
-const EMAIL = process.env.N8N_LOCAL_EMAIL || "hindsight@local.dev";
-const PASSWORD = process.env.N8N_LOCAL_PASSWORD || "HindsightLocal2026!";
-
 function loadDotenv() {
   if (!existsSync(ENV_PATH)) return;
   for (const line of readFileSync(ENV_PATH, "utf8").split(/\r?\n/)) {
@@ -24,6 +21,14 @@ function loadDotenv() {
     const v = t.slice(i + 1).trim().replace(/^['"]|['"]$/g, "");
     if (!process.env[k]) process.env[k] = v;
   }
+}
+
+loadDotenv();
+const EMAIL = process.env.N8N_LOCAL_EMAIL || "hindsight@local.dev";
+const PASSWORD = process.env.N8N_LOCAL_PASSWORD || "";
+if (!PASSWORD) {
+  console.error("N8N_LOCAL_PASSWORD is not set in .env — set it before running (no hardcoded default).");
+  process.exit(1);
 }
 
 async function login(page) {
@@ -100,7 +105,7 @@ async function main() {
     console.log("\nLocal n8n ready:");
     console.log(`  URL:      ${N8N}`);
     console.log(`  Email:    ${EMAIL}`);
-    console.log(`  Password: ${PASSWORD}`);
+    console.log("  Password: (from N8N_LOCAL_PASSWORD in .env)");
     console.log("\nStill manual: Google Sheets + Gmail OAuth (Sign in with Google in credential UI).");
   } finally {
     await browser.close();

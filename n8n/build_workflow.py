@@ -99,10 +99,11 @@ vision = node(
     {
         "method": "POST",
         "url": GEMINI_GENERATE_URL,
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": True,
         "headerParameters": {"parameters": [
             {"name": "Content-Type", "value": "application/json"},
-            {"name": "x-goog-api-key", "value": "={{ $credentials.geminiApi.apiKey }}"},
         ]},
         "sendBody": True,
         "specifyBody": "json",
@@ -172,10 +173,11 @@ gemini = node(
     {
         "method": "POST",
         "url": GEMINI_GENERATE_URL,
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": True,
         "headerParameters": {"parameters": [
             {"name": "Content-Type", "value": "application/json"},
-            {"name": "x-goog-api-key", "value": "={{ $credentials.geminiApi.apiKey }}"},
         ]},
         "sendBody": True,
         "specifyBody": "json",
@@ -270,6 +272,7 @@ build_row = node(
             "+'<p><b>Routing tag:</b> '+esc(routingTag)+'</p>'"
             "+'<h3>Summary</h3><p>'+esc(summary)+'</p>'"
             "+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>'"
+            "+'<p><a href=\"https://docs.google.com/spreadsheets/d/1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk/edit\">Open Incidents registry</a></p>'"
             "+'<hr><p><i>Sent automatically by n8n + Gemini 3 Document Analyst</i></p>';\n"
             "const markdown='# '+e.computed_severity+' - '+classification+'\\n\\n'"
             "+'| Field | Value |\\n|---|---|\\n'"
@@ -447,21 +450,22 @@ for link in links:
         main.append([])
     main[out_idx].append({"node": dst, "type": "main", "index": 0})
 
+# Heights are generous so text is always fully contained (no clipping).
 stickies = [
-    sticky("## HINDSIGHT — cyber incident log pipeline\n"
-           "Drop a SIEM export, vuln scan, or phishing report (.pdf/.md) into **/data/incoming_docs**.\n"
-           "Gemini extracts → FastAPI re-scores severity & routes → Sheets + Gmail.",
-           X[0] - 20, Y0 - 230, 540, 180, 4),
-    sticky("### Multimodal branch\nIf the doc embeds a Grafana/dashboard image, Gemini Vision "
-           "reads the chart and the notes are folded into the main extraction. "
+    sticky("## HINDSIGHT — cyber incident log pipeline\n\n"
+           "Drop a SIEM export, vuln scan, or phishing report (.pdf/.md/.txt) into **/data/incoming_docs**.\n\n"
+           "Gemini extracts → FastAPI re-scores severity & routes → Google Sheets + `output_docs/` (JSON + Markdown) + Gmail.",
+           X[0] - 20, Y0 - 260, 560, 220, 4),
+    sticky("### Multimodal branch (BON-1)\n\nIf the doc embeds a dashboard/scan image, Gemini Vision "
+           "reads the chart and the notes are folded into the main extraction.\n\n"
            "`onError: continue` so a vision miss never blocks the pipeline.",
-           X[4] - 20, Y0 - 360, 300, 150, 5),
-    sticky("### Severity is computed, not trusted\nThe FastAPI service re-scores severity from a "
-           "rubric (service tier × jurisdiction breadth × impact language). SEV1 → immediate page.",
-           X[9] - 20, Y0 - 200, 320, 130, 3),
-    sticky("### Retry / rate-limit handling\nGemini nodes: retryOnFail, 5 tries, 3s backoff — "
+           X[4] - 20, Y0 - 380, 320, 210, 5),
+    sticky("### Severity is computed, not trusted\n\nThe FastAPI service re-scores severity from a "
+           "rubric (service tier × jurisdiction breadth × impact language).\n\nCVSS floors the result; SEV1 → immediate page.",
+           X[9] - 20, Y0 - 230, 340, 200, 3),
+    sticky("### Retry / rate-limit handling (BON-4)\n\nGemini nodes: retryOnFail, 5 tries, 3s backoff — "
            "survives 429s. Enrichment: 3 tries.",
-           X[7] - 20, Y0 + 200, 280, 120, 6),
+           X[7] - 20, Y0 + 210, 320, 170, 6),
 ]
 nodes.extend(stickies)
 

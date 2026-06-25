@@ -95,9 +95,13 @@ class ServiceCatalog:
         key = _norm(service_name)
         if key in self._lookup:
             return self._lookup[key]
-        # Substring match: catalog alias appears inside the emitted name or vice versa.
+        # Whole-word match: catalog alias appears as a token inside the emitted name
+        # (or vice versa). Word boundaries stop short aliases like 'av' matching
+        # 'average' or 'ci' matching 'service'.
         for alias_key, entry in self._lookup.items():
-            if alias_key and (alias_key in key or key in alias_key):
+            if not alias_key:
+                continue
+            if re.search(rf"\b{re.escape(alias_key)}\b", key) or re.search(rf"\b{re.escape(key)}\b", alias_key):
                 return entry
         return None
 

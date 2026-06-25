@@ -29,12 +29,18 @@ for (const e of SERVICES) {
   const keys = [e.name].concat(e.aliases || []);
   for (const k of keys) { LOOKUP[norm(k)] = e; }
 }
+function wordIn(needle, hay) {
+  if (!needle) return false;
+  const esc = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp("\\b" + esc + "\\b").test(hay);
+}
 function resolveOne(name) {
   if (!name) return null;
   const key = norm(name);
   if (LOOKUP[key]) return LOOKUP[key];
+  // Whole-word match only (parity with routing.py): 'av' must not match 'average'.
   for (const ak of Object.keys(LOOKUP)) {
-    if (ak && (ak.indexOf(key) !== -1 || key.indexOf(ak) !== -1)) return LOOKUP[ak];
+    if (ak && (wordIn(ak, key) || wordIn(key, ak))) return LOOKUP[ak];
   }
   return null;
 }

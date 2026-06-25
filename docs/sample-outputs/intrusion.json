@@ -1,0 +1,27 @@
+{
+  "document_id": "09234f4c-426c-4cfa-9ee2-91cad45fe183",
+  "filename": "siem_bruteforce_intrusion.md",
+  "file_type": "md",
+  "classification": "intrusion",
+  "department": "Identity-Sec",
+  "sensitivity": "confidential",
+  "computed_severity": "SEV1",
+  "routing_tag": "escalate",
+  "cvss_score": 7.2,
+  "cve_ids": "",
+  "confidence_score": 0.65,
+  "severity_rationale": [
+    "highest-tier service 'siem' is high (+3)",
+    "incident type 'intrusion' carries regulatory weight (+3)",
+    "CVSS 7.2 (SEV2-class) (+3)",
+    "rubric (SEV1) is higher than reported (SEV2) -> review"
+  ],
+  "routing_tags": [
+    "auto-filed",
+    "exec-escalation",
+    "page-oncall",
+    "severity-review",
+    "needs-review"
+  ],
+  "action_items": "P0: Block source ASN + enforce MFA (SecOps)"
+}

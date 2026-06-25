@@ -8,15 +8,15 @@ Assignment mapping: [ASSIGNMENT-MAP.md](ASSIGNMENT-MAP.md) · Bonus detail: [bon
 
 | Suite | What it proves | Checks | Result |
 |---|---|---:|:---:|
-| FastAPI `pytest` | Core + bonus endpoints (search, compare, digest, batch) + sensitivity/catalog regressions | 67 | ✅ |
-| Extractor `pytest` | Markdown + real PDF/image (BON-1), corrupt-DOCX guard, cp1252 fallback | 5 | ✅ |
-| Cloud `enrich` + `parse` | Parity with FastAPI brain + sensitivity-regex + sheet_row safe defaults | 72 | ✅ |
+| FastAPI `pytest` | Core + bonus endpoints + sensitivity/catalog/alias/digest-window/escaping regressions | 70 | ✅ |
+| Extractor `pytest` | MD + real PDF/image (BON-1) + DOCX + TXT happy paths, corrupt-DOCX guard, cp1252 fallback | 7 | ✅ |
+| Cloud `enrich` + `parse` | Parity + sensitivity-regex + sheet_row defaults + alias word-boundary + parse classification/fence | 76 | ✅ |
 | Cloud `prepare` | Upload guards, ZIP, MIME | 7 | ✅ |
 | Cloud `compose` | §7.2 row + §8.2 subject contract + Sheet link | 8 | ✅ |
-| Bonus Code nodes | digest severity-from-CVSS + compare diff (BON-2/6) | 7 | ✅ |
+| Bonus Code nodes | digest severity-from-CVSS + compare diff/type-mismatch/overlap (BON-2/6) | 9 | ✅ |
 | Self-hosted workflow | every Code-node parses + §8.2 subject + output_docs JSON & MD + retry | 20 | ✅ |
 | `verify_all_bonuses.py` | All 8 bonuses + workflow activation | 10 | ✅ |
-| `docker_smoke_test.py` | Docker compose health + enrich smoke | 6 | ✅ |
+| `docker_smoke_test.py` | Docker compose health + enrich smoke (Supabase optional) | 5 | ✅ |
 | `audit_n8n_cloud.py` | Nodes, credentials, retry, Gemini model | 1 report | ✅ |
 | Live E2E | Form → Gemini → Sheet → Gmail | exec 507/510/523/524 | ✅ |
 

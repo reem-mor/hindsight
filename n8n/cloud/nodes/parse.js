@@ -37,9 +37,13 @@ for (let idx = 0; idx < items.length; idx++) {
     raw = "";
   }
   raw = String(raw).trim();
-  if (raw.indexOf(FENCE) !== -1) {
-    raw = raw.split(FENCE).join("");
+  // Strip only a WRAPPING ```json … ``` fence pair — never a global backtick
+  // delete (that would corrupt inner SIEM command blocks in string values).
+  if (raw.indexOf(FENCE) === 0) {
+    raw = raw.slice(FENCE.length);
     if (raw.toLowerCase().indexOf("json") === 0) { raw = raw.slice(4); }
+    const end = raw.lastIndexOf(FENCE);
+    if (end !== -1) { raw = raw.slice(0, end); }
     raw = raw.trim();
   }
   let g;
@@ -49,6 +53,9 @@ for (let idx = 0; idx < items.length; idx++) {
     throw new Error("Gemini did not return valid JSON. First 200 chars: " + raw.slice(0, 200));
   }
   validateGeminiShape(g);
+  // Gemini may return the §5.4 `classification` field instead of our `incident_type`.
+  // Map it so enrich.js routes/floors correctly instead of defaulting to "other".
+  if (!g.incident_type && g.classification) { g.incident_type = String(g.classification); }
   g.sentiment = normalizeSentiment(g.sentiment);
   const p = (prep[idx] && prep[idx].json) ? prep[idx].json : {};
   g.correlation_id = p.correlationId || null;

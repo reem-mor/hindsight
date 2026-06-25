@@ -36,6 +36,15 @@ def test_unknown_service_returns_none():
     assert _catalog().resolve("totally-made-up-service") is None
 
 
+def test_alias_no_substring_overmatch():
+    """Whole-word match only: 'av' (endpoint-security alias) must NOT match 'average'."""
+    cat = _catalog()
+    assert cat.resolve("average latency service") is None
+    # real whole-word aliases still resolve
+    assert cat.resolve("our splunk siem cluster").name == "siem"
+    assert cat.resolve("nessus scan").name == "vulnerability-scanner"
+
+
 def test_resolve_many_dedups():
     cat = _catalog()
     entries = cat.resolve_many(["nessus", "qualys", "vuln scanner"])

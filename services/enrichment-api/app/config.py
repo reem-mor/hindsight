@@ -43,8 +43,12 @@ class Settings:
     # Error-budget burn above this fraction tags a budget breach.
     budget_breach_fraction: float = _env_float("HINDSIGHT_BUDGET_BREACH_FRACTION", 0.5)
 
-    # CORS origins for the dashboard (comma-separated). "*" allowed in dev.
-    cors_origins: str = os.getenv("HINDSIGHT_CORS_ORIGINS", "*")
+    # CORS origins (comma-separated). Defaults to localhost only — set explicit
+    # origins (or "*") via HINDSIGHT_CORS_ORIGINS where cross-origin access is needed.
+    cors_origins: str = os.getenv(
+        "HINDSIGHT_CORS_ORIGINS",
+        "http://localhost:8000,http://127.0.0.1:8000,http://localhost:5678,http://localhost:8765",
+    )
 
     @property
     def cors_origin_list(self) -> list[str]:

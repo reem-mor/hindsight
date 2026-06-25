@@ -21,44 +21,47 @@ from n8n_cloud_api import (  # noqa: E402
 )
 
 # (content, x, y, width, height, color)
+# Heights are deliberately generous so the box always fully contains its text
+# (n8n sticky notes do not auto-grow — short text + a tall box never clips).
 STICKIES = [
     (
-        "## HINDSIGHT — Cyber Incident Intelligence (Cloud)\n"
+        "## HINDSIGHT — Cyber Incident Intelligence (Cloud)\n\n"
         "Upload a SIEM export / vuln scan / phishing report → **Gemini 3 Flash** extracts strict JSON → "
         "the deterministic brain re-scores severity → filed to **Google Sheets** + **Gmail**.\n\n"
         "**Setup:** open *Append to Registry* → pick your Sheet (tab `Incidents`). "
         "Gemini / Sheets / Gmail credentials are already bound.",
-        160, -60, 660, 170, 4,
+        140, -120, 700, 250, 4,
     ),
     (
-        "### 1 · Intake + Vision\n"
-        "Form upload. Guards reject empty / wrong-MIME files and fan out ZIPs. "
-        "PDFs are sent as `inline_data` so Gemini Vision reads embedded charts (BON-1).",
-        300, 660, 430, 150, 5,
+        "### 1 · Intake + Vision\n\n"
+        "Form upload. Guards reject empty / wrong-MIME files and fan out ZIPs.\n\n"
+        "PDFs are sent as `inline_data` so Gemini Vision reads embedded charts **(BON-1)**.",
+        280, 680, 460, 240, 5,
     ),
     (
-        "### 2 · Gemini 3 Flash\n"
-        "Strict JSON, temperature 0.2. Key via n8n credential — never hardcoded. "
-        "Retries **5× / 3s** on 429 rate-limit errors (BON-4).",
-        600, 150, 430, 150, 6,
+        "### 2 · Gemini 3 Flash\n\n"
+        "Strict JSON, temperature 0.2. Key via n8n credential — never hardcoded.\n\n"
+        "Retries **5× / 3s** on 429 rate-limit errors **(BON-4)**.",
+        580, 130, 460, 230, 6,
     ),
     (
-        "### 3 · Deterministic brain\n"
+        "### 3 · Deterministic brain\n\n"
         "The LLM extracts; the **service decides**. CVSS 9.8 floors to SEV1 + `escalate` even if the "
-        "author typed SEV3. Adds sensitivity, routing tag, SLO burn. Mirrors FastAPI `/enrich`.",
-        1000, 660, 450, 160, 3,
+        "author typed SEV3.\n\n"
+        "Adds sensitivity, routing tag, SLO burn. Mirrors FastAPI `/enrich`.",
+        980, 680, 480, 250, 3,
     ),
     (
-        "### 4 · Google Sheets registry\n"
+        "### 4 · Google Sheets registry\n\n"
         "*Flatten for Sheets* trims to exactly **14 columns**, then appends one row per document to the "
-        "`Incidents` tab — the source of truth + dashboard feed (BON-3).",
-        1560, -60, 440, 160, 4,
+        "`Incidents` tab — the source of truth + dashboard feed **(BON-3)**.",
+        1540, -120, 470, 230, 4,
     ),
     (
-        "### 5 · Gmail routing\n"
-        "**Is SEV1?** → SEV1 / confidential / escalate fire a high-priority **Page On-Call** (BON-8). "
-        "Everything else files a *Postmortem Filed* notice. A separate scheduled workflow sends the 24h digest (BON-2).",
-        1660, 720, 470, 170, 7,
+        "### 5 · Gmail routing\n\n"
+        "**Is SEV1?** → SEV1 / confidential / escalate fire a high-priority **Page On-Call (BON-8)**.\n\n"
+        "Everything else files a *Postmortem Filed* notice. A separate scheduled workflow sends the 24h digest **(BON-2)**.",
+        1640, 740, 500, 250, 7,
     ),
 ]
 
