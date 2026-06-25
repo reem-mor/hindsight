@@ -14,6 +14,8 @@
 
 [Architecture](#architecture) · [Quick start](#quick-start) · [Course mapping](#course-requirement-mapping) · [Bonus challenges](#bonus-challenges) · [Docs](#documentation)
 
+**👩‍🏫 Reviewing this project?** → [`docs/REVIEWER-ACCESS.md`](docs/REVIEWER-ACCESS.md) — verify end-to-end with **no login** (public form, importable workflow, local Docker, screenshots).
+
 </div>
 
 ---
@@ -301,6 +303,7 @@ Evidence index: [`docs/VALIDATION.md`](docs/VALIDATION.md)
 | **Docker stack** | `docker_smoke_test.py` — API health, `/enrich` CVSS floor, n8n UI | ✅ 5/5 |
 | **Local FastAPI** | `/health`, `/enrich`, `/sensitivity`, `/digest/preview` exercised | ✅ |
 | **Email format** | per-document · SEV1 alert · 24h digest rendered + screenshotted | ✅ |
+| **Supabase (BON-5)** | pgvector 0.8.0 · `hindsight_incidents` 6×768-dim · HNSW index · `match_*` RPC · ranked search | ✅ live |
 
 Sticky notes on the Cloud workflow are applied/refreshed with `scripts/add_cloud_sticky_notes.py`.
 

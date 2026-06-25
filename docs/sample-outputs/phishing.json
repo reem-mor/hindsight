@@ -1,0 +1,23 @@
+{
+  "document_id": "2f422652-734d-4864-be6e-b0cf1f44ef4c",
+  "filename": "phishing_kyc_credential_harvest.md",
+  "file_type": "md",
+  "classification": "phishing",
+  "department": "Identity-Sec",
+  "sensitivity": "confidential",
+  "computed_severity": "SEV3",
+  "routing_tag": "needs-review",
+  "cvss_score": null,
+  "cve_ids": "",
+  "confidence_score": 0.63,
+  "severity_rationale": [
+    "highest-tier service 'auth' is high (+3)",
+    "rubric (SEV3) is lower than reported (SEV2) -> review"
+  ],
+  "routing_tags": [
+    "auto-filed",
+    "severity-review",
+    "needs-review"
+  ],
+  "action_items": "P0: Revoke affected sessions + rotate creds (IAM)"
+}

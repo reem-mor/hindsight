@@ -14,7 +14,7 @@
           "ignored": "**/.*"
         }
       },
-      "id": "ebc387fd-8ea3-4d0c-a0e6-6668f1195045",
+      "id": "7a6b23c6-bb98-4402-8137-d62e35a1623e",
       "name": "\ud83d\udcc2 New postmortem",
       "type": "n8n-nodes-base.localFileTrigger",
       "typeVersion": 1,
@@ -27,7 +27,7 @@
       "parameters": {
         "command": "=python3 /data/extractors/extract_document.py \"{{ $json.path }}\" --image-dir /data/tmp_images"
       },
-      "id": "8e261237-1c9f-4355-b974-2ee34641bffc",
+      "id": "8b3d4134-8dd1-4ea8-b16a-03a1650f7c68",
       "name": "\ud83d\udddc Extract text + images",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
@@ -40,7 +40,7 @@
       "parameters": {
         "jsCode": "// stdout of the extractor is a single JSON object\nconst raw = $input.first().json.stdout;\nlet doc;\ntry { doc = JSON.parse(raw); }\ncatch (e) { throw new Error('Extractor did not return JSON: ' + raw?.slice(0,200)); }\nif (!doc.ok) { throw new Error('Extraction failed for ' + doc.filename); }\n// correlation id ties logs across Gemini + enrichment + sheets\nconst corr = 'hs-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7);\nreturn [{ json: { ...doc, correlation_id: corr,\n  has_images: Array.isArray(doc.images) && doc.images.length > 0 } }];"
       },
-      "id": "c9152868-d700-41d2-b2e4-df6530722ec7",
+      "id": "58b2e428-2a79-4641-81b4-d5a12808c3bd",
       "name": "Parse extraction",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -58,7 +58,7 @@
           },
           "conditions": [
             {
-              "id": "7a792455-7828-4e4a-a1ad-8b9bc3547188",
+              "id": "d9b90b62-16fc-4c27-8306-90b0e560bfa1",
               "leftValue": "={{ $json.has_images }}",
               "rightValue": true,
               "operator": {
@@ -72,7 +72,7 @@
         },
         "options": {}
       },
-      "id": "6ce914fa-34d2-4972-aa26-673bf6d89e6e",
+      "id": "2a26d1b5-deab-41c5-a586-b812cb8c57b7",
       "name": "Has dashboard image?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -103,7 +103,7 @@
         "jsonBody": "={\n  \"contents\": [{ \"parts\": [\n    { \"text\": \"Read this SIEM or vulnerability-scan chart screenshot. Return ONLY JSON: {image_kind, metric_name, unit, anomaly_observed, approx_peak_value, approx_baseline_value, time_window, one_line_summary}.\" },\n    { \"inline_data\": { \"mime_type\": \"image/png\", \"data\": \"{{ $binary.data0 ? $binary.data0.toString('base64') : '' }}\" } }\n  ]}],\n  \"generationConfig\": { \"temperature\": 0.2, \"responseMimeType\": \"application/json\" }\n}",
         "options": {}
       },
-      "id": "1b501914-c1d3-4bc9-8497-5f374cfccafd",
+      "id": "32885eda-962a-437e-aaa5-8cd987a3e63e",
       "name": "\ud83d\udc41 Gemini Vision \u2014 read chart",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -126,7 +126,7 @@
       "parameters": {
         "jsCode": "// Fold any vision JSON into the extraction item as vision_notes.\nconst items = $input.all();\nconst base = items.find(i => i.json.extracted_text) || items[0];\nlet visionNotes = '';\nconst v = items.find(i => i.json.candidates || i.json.metric_name);\nif (v) {\n  try {\n    const t = v.json.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(v.json);\n    visionNotes = typeof t === 'string' ? t : JSON.stringify(t);\n  } catch (e) { visionNotes = ''; }\n}\nreturn [{ json: { ...base.json, vision_notes: visionNotes } }];"
       },
-      "id": "a3711ab8-9d00-4968-800e-b285ea4de38d",
+      "id": "9b08c085-51c8-4a0a-aaf4-f8185e3b94b9",
       "name": "Attach vision notes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -139,7 +139,7 @@
       "parameters": {
         "jsCode": "const j = $input.first().json;\nconst prompt = `You are HINDSIGHT, a cybersecurity incident-log analyst. Read the SIEM export, vuln scan, or phishing report and return ONLY a valid JSON object matching this schema exactly:\\n{incident_title, summary, severity (SEV1|SEV2|SEV3|SEV4), incident_type (security|data-incident|vulnerability-scan|malware|phishing|intrusion|ddos|other), status, affected_services[], affected_jurisdictions[], root_cause, trigger, detection_method, entities:{people[],teams[],systems[],dates[],error_codes[]}, action_items:[{action,owner,priority}], contributing_factors[], sentiment, blameless_quality, cvss_score, cve_ids[], confidence_score, metrics:{detected_at,resolved_at,ttd_minutes,ttr_minutes,customer_impact}}\\nFor vuln scans set cvss_score and cve_ids verbatim. When unsure of severity pick the LOWER one.\\n\\nVISION NOTES (from embedded SIEM/scan charts):\\n${j.vision_notes || 'none'}\\n\\nDOCUMENT:\\n${j.extracted_text}`;\nreturn [{ json: { ...j, prompt } }];"
       },
-      "id": "5da5c8a8-ddc5-42e1-8c80-8d0f52fa36b0",
+      "id": "73ca3637-eef5-48f9-b62a-c8a0d212dc8e",
       "name": "Build extraction prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -170,7 +170,7 @@
         "jsonBody": "={\n  \"contents\": [{ \"parts\": [{ \"text\": {{ JSON.stringify($json.prompt) }} }] }],\n  \"generationConfig\": { \"temperature\": 0.2, \"responseMimeType\": \"application/json\" }\n}",
         "options": {}
       },
-      "id": "c1ba159a-83a7-4fa8-ac79-13ed0f05a9db",
+      "id": "32c20ba0-d77e-4766-a881-56fef2166af6",
       "name": "\ud83e\udde0 Gemini \u2014 extract incident",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -192,7 +192,7 @@
       "parameters": {
         "jsCode": "const FENCE = String.fromCharCode(96, 96, 96);\nconst REQUIRED = ['summary', 'sentiment', 'action_items', 'confidence_score'];\nfunction validateGeminiShape(g) {\n  const missing = [];\n  for (let i = 0; i < REQUIRED.length; i++) {\n    if (g[REQUIRED[i]] === undefined) missing.push(REQUIRED[i]);\n  }\n  if (!g.incident_type && !g.classification) missing.push('incident_type|classification');\n  if (!Array.isArray(g.action_items)) missing.push('action_items(array)');\n  if (missing.length) throw new Error('Gemini JSON missing required fields: ' + missing.join(', '));\n}\nconst prev = $('Build extraction prompt').first().json;\nconst resp = $input.first().json;\nlet txt = resp.candidates?.[0]?.content?.parts?.[0]?.text;\nif (!txt) throw new Error('Gemini returned no text');\ntxt = String(txt).trim();\nif (txt.indexOf(FENCE) !== -1) {\n  txt = txt.split(FENCE).join('');\n  if (txt.toLowerCase().indexOf('json') === 0) txt = txt.slice(4);\n  txt = txt.trim();\n}\nlet g; try { g = JSON.parse(txt); } catch(e){ throw new Error('Bad JSON from Gemini: '+txt.slice(0,200)); }\nvalidateGeminiShape(g);\ng.filename = prev.filename;\ng.correlation_id = prev.correlation_id;\nreturn [{ json: g }];"
       },
-      "id": "0ab809cb-3db6-46ff-a3a1-a269d961cf40",
+      "id": "66dd7cae-f938-44bf-b801-c8c22038deae",
       "name": "Parse Gemini JSON",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -210,7 +210,7 @@
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "473d1bcc-d128-4048-8dbe-8a5ff0e65e8a",
+      "id": "0139ca90-b63d-4d2f-a074-da5761b5a22b",
       "name": "\u2699\ufe0f Enrich (FastAPI)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -226,7 +226,7 @@
       "parameters": {
         "jsCode": "function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}\nfunction actionsCsv(a){if(!a||!a.length)return'';return a.map(x=>{const o=(x&&x.owner&&String(x.owner).trim())?String(x.owner):'UNOWNED';const p=(x&&x.priority)?String(x.priority):'-';return p+': '+String(x.action||'')+' ('+o+')';}).join('; ');}\nfunction fileType(n){const m=String(n||'').match(/\\.([^.]+)$/);return m?m[1].toLowerCase():'txt';}\nconst g=$('Parse Gemini JSON').first().json;\nconst e=$input.first().json;\nconst classification=String(e.incident_type||g.incident_type||'other');\nconst filename=String(e.source_filename||g.filename||g.source_filename||'unknown');\nconst sentiment=String(g.sentiment||'neutral');\nconst routingTag=String(e.routing_tag||'auto-approved');\nconst summary=String(g.summary||'').slice(0,500);\nconst actionItems=actionsCsv(g.action_items||[]);\nconst row={document_id:e.document_id,filename:filename,file_type:fileType(filename),processed_at:e.processed_at,classification:classification,department:e.department,sentiment:sentiment,confidence_score:e.confidence_score,summary:summary,routing_tag:routingTag,sensitivity:e.sensitivity,action_items:actionItems,cvss_score:e.cvss_score,cve_ids:(e.cve_ids||[]).join(', ')};\nconst emailHtml='<h2>Document Processed</h2>'+'<p><b>File:</b> '+esc(filename)+'</p>'+'<p><b>Classification:</b> '+esc(classification)+'</p>'+'<p><b>Sentiment:</b> '+esc(sentiment)+'</p>'+'<p><b>Department:</b> '+esc(e.department)+'</p>'+'<p><b>Sensitivity:</b> '+esc(e.sensitivity)+'</p>'+'<p><b>Routing tag:</b> '+esc(routingTag)+'</p>'+'<h3>Summary</h3><p>'+esc(summary)+'</p>'+'<h3>Action items</h3><p>'+esc(actionItems||'(none)')+'</p>'+'<hr><p><i>Sent automatically by n8n + Gemini 3 Document Analyst</i></p>';\nconst markdown='# '+e.computed_severity+' - '+classification+'\\n\\n'+'| Field | Value |\\n|---|---|\\n'+'| File | '+filename+' |\\n'+'| Classification | '+classification+' |\\n'+'| Department | '+e.department+' |\\n'+'| Sensitivity | '+e.sensitivity+' |\\n'+'| Routing tag | '+routingTag+' |\\n'+'| CVSS | '+(e.cvss_score!=null?e.cvss_score:'n/a')+' |\\n\\n'+'## Summary\\n'+summary+'\\n\\n## Action items\\n'+(actionItems||'(none)')+'\\n';\nconst subjDigest='['+classification+'] New document processed: '+filename;\nconst subjSev1='[CONFIDENTIAL ESCALATE] '+filename+' - '+e.department;\nconst isSev1=e.computed_severity==='SEV1'||String(e.sensitivity)==='confidential'||routingTag==='escalate';\nconst recordJson=JSON.stringify({...row,postmortem_markdown:markdown},null,2);\nreturn [{json:{row,markdown,recordJson,is_sev1:isSev1,e,g,emailSubjectDigest:subjDigest,emailHtmlDigest:emailHtml,emailSubjectSev1:subjSev1,emailHtmlSev1:emailHtml,out_path:`/data/output_docs/${e.document_id}.md`,json_out_path:`/data/output_docs/${e.document_id}.json`}}];"
       },
-      "id": "70ac4f49-4fa1-416e-a444-1fca43d7741d",
+      "id": "cf95972d-64cb-4e23-8654-35d7edb725b9",
       "name": "Compose record + outputs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -239,7 +239,7 @@
       "parameters": {
         "jsCode": "return [{ json: $input.first().json.row }];"
       },
-      "id": "e158e81f-fba9-4ba3-b2bf-0c066f479d34",
+      "id": "650d9ef7-b017-4e79-a8c7-27edd3308c4b",
       "name": "Flatten row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -268,7 +268,7 @@
         },
         "options": {}
       },
-      "id": "3f29360b-06ad-413b-ad59-f3eb743efbe1",
+      "id": "9b3da021-4fd0-484a-93f4-60483ce6eb05",
       "name": "\ud83d\udcca Append to registry",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
@@ -287,7 +287,7 @@
       "parameters": {
         "jsCode": "const j = $('Compose record + outputs').first().json;\nconst buff = Buffer.from(j.markdown, 'utf8');\nreturn [{ json: { out_path: j.out_path },\n  binary: { data: { data: buff.toString('base64'),\n    mimeType: 'text/markdown', fileName: j.row.document_id + '.md' } } }];"
       },
-      "id": "6c258e06-b54d-40e2-883e-44f1c0c67a25",
+      "id": "6041b3c4-4084-4066-ba09-f235a0c70d36",
       "name": "Markdown \u2192 file",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -303,7 +303,7 @@
         "dataPropertyName": "data",
         "options": {}
       },
-      "id": "b34830a3-3016-4bf2-b11f-d269cde58a21",
+      "id": "fe51a3a1-63d7-49fe-b74a-3eeca7068605",
       "name": "\ud83d\udcbe Write output doc",
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
@@ -316,7 +316,7 @@
       "parameters": {
         "jsCode": "const j = $('Compose record + outputs').first().json;\nconst buff = Buffer.from(j.recordJson, 'utf8');\nreturn [{ json: { json_out_path: j.json_out_path },\n  binary: { data: { data: buff.toString('base64'),\n    mimeType: 'application/json', fileName: j.row.document_id + '.json' } } }];"
       },
-      "id": "918a0d7c-7fd5-44cc-a2a1-31193414a5df",
+      "id": "e37075de-ed89-4c81-a6bc-eac5119f2c94",
       "name": "Record \u2192 JSON file",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -332,7 +332,7 @@
         "dataPropertyName": "data",
         "options": {}
       },
-      "id": "413c4422-3b44-4554-8358-eefbef97f7b9",
+      "id": "7b446eb5-6d3f-4aba-a3c2-3f0723f471b5",
       "name": "\ud83d\udcbe Write JSON record",
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1,
@@ -350,7 +350,7 @@
           },
           "conditions": [
             {
-              "id": "5e9e98f5-a1a8-4f46-9869-cf3161121fd9",
+              "id": "cc899f1c-b306-445f-a08e-757ae6e5eae7",
               "leftValue": "={{ $json.is_sev1 }}",
               "rightValue": true,
               "operator": {
@@ -364,7 +364,7 @@
         },
         "options": {}
       },
-      "id": "990dcd27-af58-4c0f-a53d-c20c23357548",
+      "id": "f8991b38-b20f-4cb9-8f7e-d41669fc7c7b",
       "name": "SEV1?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
@@ -384,7 +384,7 @@
           "priority": "high"
         }
       },
-      "id": "2cc5c9cc-d258-4d71-bc1f-1bf465e79b7f",
+      "id": "1f55f4dc-b75f-4c14-a5e2-4050dc328501",
       "name": "\ud83d\udea8 Page on-call (SEV1)",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
@@ -408,7 +408,7 @@
         "message": "={{ $('Compose record + outputs').first().json.emailHtmlDigest }}",
         "options": {}
       },
-      "id": "dfad6559-c568-435b-920d-4088e7788cb5",
+      "id": "49714b3b-cb77-475f-890a-48890626b5da",
       "name": "\ud83d\udce7 Send digest",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2,
@@ -430,8 +430,8 @@
         "width": 540,
         "color": 4
       },
-      "id": "9464fcea-21ad-4ace-bdbb-64f6a1ed0e55",
-      "name": "Note 1e986b",
+      "id": "47fd703b-803a-4ae2-b8b7-63ceec4650f8",
+      "name": "Note 4a9bec",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -446,8 +446,8 @@
         "width": 300,
         "color": 5
       },
-      "id": "79177840-5d69-4b24-b287-d9f8591a2216",
-      "name": "Note 02dd3f",
+      "id": "388a3937-8364-4e09-9ac3-16a4d47aea0f",
+      "name": "Note 02fa57",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -462,8 +462,8 @@
         "width": 320,
         "color": 3
       },
-      "id": "1e4e2b9b-42a3-4a4a-ad0f-670a0b93792f",
-      "name": "Note cb4d57",
+      "id": "ff13066c-6607-48aa-878b-4959ad3fecfe",
+      "name": "Note c1023c",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -478,8 +478,8 @@
         "width": 280,
         "color": 6
       },
-      "id": "89fe97a1-b138-45da-9f43-abb55ae6f850",
-      "name": "Note 540867",
+      "id": "1e873b3b-ab87-4163-ba86-011ffd464acc",
+      "name": "Note 3feea1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [

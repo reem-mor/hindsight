@@ -17,10 +17,11 @@ create table if not exists hindsight_incidents (
   created_at timestamptz default now()
 );
 
+-- HNSW: high-recall ANN that works at any table size (ivfflat with a fixed
+-- `lists` count under-returns on small datasets at default probes — HNSW does not
+-- need that tuning and gives correct ranking from the first row onward).
 create index if not exists hindsight_incidents_embedding_idx
-  on hindsight_incidents using ivfflat (embedding vector_cosine_ops)
-  with (lists = 100);
--- After bulk load: REINDEX INDEX hindsight_incidents_embedding_idx;
+  on hindsight_incidents using hnsw (embedding vector_cosine_ops);
 
 -- RPC for similarity search (cosine distance; lower = more similar)
 create or replace function match_hindsight_incidents(
