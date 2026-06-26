@@ -33,55 +33,73 @@ This mirrors real enterprise Document Intelligence systems used in SecOps, legal
 
 ## Architecture
 
+Colour-coded by stage — **intake → extraction + Vision → Gemini 3 → deterministic brain → three output channels** — with every bonus challenge wired in:
+
+![HINDSIGHT — end-to-end architecture](docs/architecture.png)
+
+<details>
+<summary><b>🔀 Interactive flow diagram</b> — mermaid, renders &amp; zooms natively on GitHub</summary>
+
 ```mermaid
 flowchart LR
-  subgraph input["1 · Input detection"]
+  subgraph input["1 · Intake"]
     Form["☁️ Cloud form upload"]
     Watch["📂 incoming_docs/ watcher"]
   end
-  subgraph extract["2 · Text + image extraction"]
-    Prep["Prepare · guards · ZIP fan-out"]
-    Vision["👁️ Gemini Vision<br/>(embedded charts)"]
+  subgraph extract["2 · Extract + Vision"]
+    Prep["Prepare · guards · ZIP"]
+    Vision["👁️ Gemini Vision"]
   end
   subgraph analyze["3 · Gemini 3 Flash"]
-    Flash["HTTP · strict JSON<br/>temp 0.2 · retry 5×/3s"]
+    Flash["strict JSON · temp 0.2<br/>retry 5×/3s"]
     Parse["Parse + validate"]
   end
-  subgraph compare6["BON-6 · Multi-model compare (non-blocking)"]
-    Pro["Gemini 3.1 Pro<br/>parallel extract"]
-    Cmp["Compare Models<br/>Flash vs Pro diff"]
+  subgraph compare6["BON-6 · Flash vs Pro"]
+    Pro["Gemini 3.1 Pro"]
+    Cmp["Compare Models"]
   end
   subgraph brain["4 · Deterministic brain"]
-    Enrich["FastAPI /enrich · enrich.js<br/>CVSS floor → SEV · sensitivity · routing"]
+    Enrich["FastAPI /enrich · enrich.js<br/>CVSS floor → SEV · routing"]
   end
   subgraph outputs["5–6 · Output channels"]
-    Sheets["📊 Google Sheets<br/>14-col Incidents"]
-    Files["📄 output_docs/<br/>JSON + Markdown"]
-    Gmail["📧 Gmail<br/>page · filed · digest"]
+    Sheets["📊 Google Sheets"]
+    Files["📄 output_docs/"]
+    Gmail["📧 Gmail · page · digest"]
   end
   Form --> Prep
   Watch --> Prep
-  Prep -->|"PDF inline_data"| Vision
+  Prep -->|PDF inline_data| Vision
   Prep --> Flash
   Vision --> Flash
   Flash --> Parse --> Enrich
   Parse --> Pro --> Cmp
   Enrich --> Sheets & Files & Gmail
+  classDef intake fill:#11233a,stroke:#3b82f6,color:#cfe0ff
+  classDef extract fill:#0c2a30,stroke:#06b6d4,color:#c7f0f7
+  classDef gemini fill:#1e1430,stroke:#a855f7,color:#e6d6ff
+  classDef bonus fill:#2a1422,stroke:#f472b6,color:#ffd6ea
+  classDef brain fill:#2a2010,stroke:#f59e0b,color:#ffe6bf
+  classDef output fill:#0c2519,stroke:#10b981,color:#c5f3df
+  class Form,Watch intake
+  class Prep,Vision extract
+  class Flash,Parse gemini
+  class Pro,Cmp bonus
+  class Enrich brain
+  class Sheets,Files,Gmail output
 ```
+</details>
 
-> Rendered diagram (PNG): [`docs/architecture.png`](docs/architecture.png) · bonus-challenge diagrams: [`docs/bonus-challenges.md`](docs/bonus-challenges.md)
-
-| Layer | Component | Role |
+| 🎨 Layer | Component | Role |
 |---|---|---|
-| Orchestration | **n8n** (Cloud + Docker) | Workflow engine — form trigger, HTTP, Sheets, Gmail |
-| AI | **Google Gemini 3 Flash** | Structured JSON extraction; Vision for embedded charts |
-| Microservice | **FastAPI enrichment API** | Deterministic severity, sensitivity, routing, search |
-| Results DB | **Google Sheets** | One row per document (`Incidents` tab) |
-| Notifications | **Gmail OAuth2** | Per-document email + SEV1 page + daily digest |
-| Search | **Supabase pgvector** | Semantic search (BON-5) |
-| Dashboard | **`dashboard/index.html`** | Live stats from published Sheet CSV |
+| 🔵 Orchestration | **n8n** (Cloud + Docker) | Workflow engine — form trigger, HTTP, Sheets, Gmail |
+| 🟣 AI | **Google Gemini 3 Flash** (+ 3.1 Pro) | Structured JSON extraction · Vision · Flash-vs-Pro compare |
+| 🟠 Microservice | **FastAPI enrichment API** | Deterministic severity, sensitivity, routing, search |
+| 🟢 Results DB | **Google Sheets** | One row per document (`Incidents` tab) |
+| 🟢 Notifications | **Gmail OAuth2** | Per-document email + SEV1 page + daily digest |
+| 🩷 Search | **Supabase pgvector** | Semantic search (BON-5) |
+| 🩷 Dashboard | **`dashboard/index.html`** | Live stats from published Sheet CSV |
 
-Deep dive: [`docs/architecture.md`](docs/architecture.md) · source: [`docs/architecture.mmd`](docs/architecture.mmd)
+Diagram source: [`docs/architecture.svg`](docs/architecture.svg) → PNG via `scripts/render_architecture.mjs` · deep dive: [`docs/architecture.md`](docs/architecture.md) · bonus flows: [`docs/bonus-challenges.md`](docs/bonus-challenges.md)
 
 **Live Cloud workflow** (`aYEv22StywIPL3Rq`) — the deployed pipeline, including the non-blocking **BON-6** Flash-vs-Pro compare branch and the **BON-8** SEV1/confidential alert routing:
 
@@ -222,20 +240,20 @@ The n8n **Gemini HTTP node** calls `POST …/models/gemini-3-flash:generateConte
 
 ## Bonus challenges
 
-All eight course bonus challenges are implemented and verified:
+**All eight course bonus challenges are implemented, wired, and verified live:**
 
-| # | Challenge | Implementation | Verify |
-|---|---|---|---|
-| BON-1 | Gemini Vision | `extractors/extract_document.py` + Vision branch | `tests/test_extractor.py` |
-| BON-2 | Daily email digest | `digest_workflow.json` + `digest_aggregate.js` | `test_digest.py`, Cloud wf active |
-| BON-3 | Live dashboard | [`dashboard/index.html`](dashboard/index.html) · `?csv=` | `docs/screenshot-dashboard.png` |
-| BON-4 | Retry logic | Gemini 5× / 3 s backoff | `audit_n8n_cloud.py` |
-| BON-5 | Semantic search | Supabase pgvector (`gemini-embedding-001`, 768-dim) + `/search` `/index` | `test_search.py` (incl. SupabaseVectorStore), live Supabase 5 rows |
-| BON-6 | Multi-model compare | **Wired in Cloud wf** (`Gemini Pro` → `Parse Pro` → `Compare Models`, non-blocking) + `/compare` | `test_compare.py`, live exec 757 |
-| BON-7 | Multi-file batch | `.zip` fan-out in `prepare.js` | `test_batch.py` |
-| BON-8 | Sensitivity alerting | SEV1 / confidential / escalate → Page On-Call | `patch_cloud_workflow.py` |
+| # | Challenge | Implementation | Status |
+|---|---|---|:--:|
+| 🌐 **BON-1** | Gemini **Vision** — embedded PDF charts | `extract_document.py` + Vision branch · cloud PDF `inline_data` | ✅ |
+| 📧 **BON-2** | Daily email **digest** — 24 h summary | `digest_workflow.json` + `digest_aggregate.js` · cron 08:00 UTC | ✅ |
+| 📊 **BON-3** | Live **dashboard** | [`dashboard/index.html`](dashboard/index.html) · live Sheet CSV · Chart.js | ✅ |
+| 🔁 **BON-4** | **Retry** logic — 429 backoff | Gemini HTTP `retryOnFail` 5× / 3 s | ✅ |
+| 🔍 **BON-5** | **Semantic search** — vector DB | Supabase pgvector · `gemini-embedding-001` 768-dim · HNSW · `/search` `/index` | ✅ |
+| 🧩 **BON-6** | **Multi-model compare** — Flash vs Pro | **wired live**: `Gemini 3.1 Pro` → `Parse Pro` → `Compare Models` (non-blocking) · `/compare` | ✅ |
+| 📎 **BON-7** | **Multi-file batch** — ZIP fan-out | `prepare.js` unzips → one item per document | ✅ |
+| 🛡️ **BON-8** | **Sensitivity alerting** | SEV1 / confidential / escalate → immediate Page On-Call | ✅ |
 
-Details: [`docs/bonus-challenges.md`](docs/bonus-challenges.md)
+Verified by **202 tests**, the live audit (`scripts/audit_n8n_cloud.py`), and live execution **#759**. Per-challenge detail + sub-diagrams: [`docs/bonus-challenges.md`](docs/bonus-challenges.md)
 
 ---
 
