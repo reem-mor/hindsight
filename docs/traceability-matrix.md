@@ -75,8 +75,8 @@ Legend: ✅ automated test · 📸 screenshot · ⚙️ workflow config · ✋ l
 | BON-2 | Daily Email Digest | [digest_workflow.json](../n8n/cloud/digest_workflow.json); [digest_aggregate.js](../n8n/cloud/nodes/digest_aggregate.js) | `test_digest.py`; `test_bonus_nodes.mjs` | ✅ |
 | BON-3 | Live Dashboard | [dashboard/index.html](../dashboard/index.html) | 📸 screenshot-dashboard; `?csv=` URL param | ✅ |
 | BON-4 | Retry logic | Gemini HTTP 5×/3s | audit `Gemini retry policy` | ✅ |
-| BON-5 | Semantic Search | [search_store.py](../services/enrichment-api/app/search_store.py); [001_pgvector_incidents.sql](../migrations/001_pgvector_incidents.sql); `POST /search` | `test_search.py` | ✅ |
-| BON-6 | Multi-model Compare | [compare.py](../services/enrichment-api/app/compare.py); [compare_models.js](../n8n/cloud/nodes/compare_models.js); `POST /compare` | `test_compare.py`; bonus node test | ✅ |
+| BON-5 | Semantic Search | [search_store.py](../services/enrichment-api/app/search_store.py); [embeddings.py](../services/enrichment-api/app/embeddings.py) (`gemini-embedding-001`, 768-dim); [001_pgvector_incidents.sql](../migrations/001_pgvector_incidents.sql); `POST /search` `/index` | `test_search.py` (InMemory **+ SupabaseVectorStore**); live Supabase `zduaexkkhdnltyelvuwn` · 5 rows · HNSW · `match_*` RPC (MCP-verified 2026-06-26) | ✅ |
+| BON-6 | Multi-model Compare | **Wired in Cloud workflow**: `Gemini — Extract (Pro)` → `Parse Gemini Pro` → `Compare Models` (non-blocking, failure-isolated); [compare_models.js](../n8n/cloud/nodes/compare_models.js); [compare.py](../services/enrichment-api/app/compare.py) `POST /compare` | `test_compare.py`; bonus node test; **live exec 759** (Flash vs `gemini-3.1-pro-preview`: agreement=true, entity-overlap 0.90); [compare-flash-vs-pro.md](sample-outputs/compare-flash-vs-pro.md) | ✅ |
 | BON-7 | Multi-file Batch | [prepare.js](../n8n/cloud/nodes/prepare.js) zip fan-out; [batch.py](../services/enrichment-api/app/batch.py) | [batch_incidents.zip](../samples/batch_incidents.zip); `test_batch.py` | ✅ |
 | BON-8 | Sensitivity alerting | Cloud `Is SEV1?` OR confidential OR escalate; self-hosted `is_sev1` parity | `patch_cloud_workflow.py`; `build_workflow.py`; pytest | ✅ |
 
@@ -96,4 +96,4 @@ python scripts\sync_n8n_cloud_nodes.py
 python scripts\build_digest_workflow.py
 ```
 
-Live E2E: exec **507** / **510** — `vuln_scan_critical_openssl.md` → Sheet + Page On-Call (SEV1).
+Live E2E: exec **757** (2026-06-26) — SEV1 critical-RCE PDF → Gemini Flash → enrich (CVSS 9.8 → **SEV1 · escalate · confidential**) → Sheet append + **Page On-Call (SEV1)** email, with the BON-6 Flash-vs-Pro compare branch exercised in parallel (Pro 429 on the free tier → graceful degradation, execution still **success**). Earlier: exec 507 / 510.

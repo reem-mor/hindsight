@@ -12,6 +12,11 @@ flowchart TB
     Flash[gemini-3-flash-preview JSON]
     Parse[Parse Gemini JSON]
   end
+  subgraph compare6 [Multi-model Compare BON-6 non-blocking]
+    ProExtract[Gemini Extract Pro gemini-3.1-pro-preview]
+    ParsePro[Parse Gemini Pro]
+    Compare[Compare Models Flash vs Pro]
+  end
   subgraph decide [Enrichment P4]
     Enrich[HINDSIGHT Enrich CVSS floor sensitivity routing_tag]
   end
@@ -28,7 +33,6 @@ flowchart TB
   subgraph bonus [Bonus sidecars]
     Dash[Live Dashboard BON-3]
     Search[Semantic Search BON-5]
-    Compare[Multi-model Compare BON-6 API]
     Daily[Daily Digest BON-2 cron]
   end
   CloudForm --> Prepare
@@ -38,6 +42,7 @@ flowchart TB
   Prepare --> Flash
   Vision --> Flash
   Flash --> Parse --> Enrich
+  Parse --> ProExtract --> ParsePro --> Compare
   Enrich --> Sheets
   Enrich --> Files
   Enrich --> IF

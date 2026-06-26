@@ -31,6 +31,7 @@ tmp_images/*
 
 # Build intermediates
 samples/_*.png
+samples/_extract_images/
 docs/_tmp_*.html
 # Generated sample artifacts (reproduce with samples/make_*_pdf_sample.py)
 samples/*.pdf
@@ -38,8 +39,9 @@ samples/*.pdf
 # Script tooling (Playwright for screenshots — not committed)
 scripts/node_modules/
 node_modules/
-package.json
-package-lock.json
+# root-level npm scratch only — must NOT match the tracked scripts/package.json
+/package.json
+/package-lock.json
 
 # Claude Code local state
 .claude/worktrees/

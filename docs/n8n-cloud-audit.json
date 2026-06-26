@@ -2,7 +2,7 @@
   "workflow_id": "aYEv22StywIPL3Rq",
   "name": "HINDSIGHT \u2014 Postmortem Intelligence (Cloud)",
   "active": true,
-  "nodes_total": 17,
+  "nodes_total": 20,
   "checks": [
     {
       "status": "ok",
@@ -71,6 +71,11 @@
     },
     {
       "status": "ok",
+      "item": "BON-6 Flash/Pro compare branch",
+      "detail": "Pro -> gemini-3.1-pro-preview:generateContent; onError=continueRegularOutput"
+    },
+    {
+      "status": "ok",
       "item": "Google Sheets credential bound",
       "detail": "{\"googleSheetsOAuth2Api\": {\"id\": \"6CH1fQ50fz9t2M9G\", \"name\": \"Google Sheets Amdocs Course API\"}}"
     },
@@ -122,7 +127,7 @@
     {
       "status": "ok",
       "item": "Recent executions",
-      "detail": "536=success, 535=success, 524=success"
+      "detail": "759=success, 757=success, 747=success"
     }
   ]
 }

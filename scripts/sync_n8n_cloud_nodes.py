@@ -16,6 +16,7 @@ from n8n_cloud_api import (
     read_node_bodies,
     patch_workflow_nodes,
     ensure_flatten_sheets_node,
+    ensure_bon6_compare_branch,
 )
 from patch_cloud_workflow import (
     patch_sev1_routing,
@@ -39,6 +40,7 @@ def main() -> int:
     bodies = read_node_bodies(root)
     wf = api_get(base, key, f"/api/v1/workflows/{WORKFLOW_ID}")
     added_flatten = ensure_flatten_sheets_node(wf, root)
+    added_bon6 = ensure_bon6_compare_branch(wf, root)
     n = patch_workflow_nodes(wf, bodies, sheet_id=sheet_id)
 
     # Apply the node-CONFIG patches too, so the single documented deploy step makes
@@ -59,8 +61,9 @@ def main() -> int:
     payload = strip_workflow_meta(wf)
     api_request(base, key, "PUT", f"/api/v1/workflows/{WORKFLOW_ID}", payload)
     extra = " + Flatten for Sheets node" if added_flatten else ""
+    bon6_note = " + BON-6 Flash/Pro compare branch" if added_bon6 else ""
     cfg_note = f" + config[{', '.join(cfg)}]" if cfg else ""
-    print(f"Synced {n} node-body patch(es) to workflow {WORKFLOW_ID} (sheet {sheet_id}){extra}{cfg_note}")
+    print(f"Synced {n} node-body patch(es) to workflow {WORKFLOW_ID} (sheet {sheet_id}){extra}{bon6_note}{cfg_note}")
     return 0
 
 

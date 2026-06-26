@@ -21,6 +21,8 @@ flowchart LR
 Cloud node names: `Submit a Postmortem` → `Prepare Document` → `Gemini — Extract Incident` →
 `Parse Gemini JSON` → `HINDSIGHT Enrich` → `Compose Outputs` → `Flatten for Sheets` /
 `Page On-Call (SEV1)` / `Postmortem Filed`.
+BON-6 compare branch (off `Parse Gemini JSON`, non-blocking): `Gemini — Extract (Pro)` →
+`Parse Gemini Pro` → `Compare Models`.
 
 ## Enrichment decision logic (DIAG-3)
 

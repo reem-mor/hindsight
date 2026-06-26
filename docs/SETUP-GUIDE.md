@@ -115,7 +115,11 @@ If Gemini 404: model URL is set to `gemini-3-flash-preview` in repo + Cloud patc
 
 ### Bonus: multi-model compare (BON-6)
 
-`compare_models.js` is **not** wired into the main 16-node Cloud grading workflow. Use `POST /compare` on the enrichment API, or import a separate branch manually if needed.
+Wired into the live Cloud workflow as a **non-blocking parallel branch** off `Parse Gemini JSON`:
+`Gemini — Extract (Pro)` (`gemini-3.1-pro-preview`) → `Parse Gemini Pro` → `Compare Models`. Every
+Pro-branch node is `onError=continueRegularOutput`, so a Pro outage/429 can't block the registry
+write or SEV1 alert. Deploy/refresh via `scripts/sync_n8n_cloud_nodes.py`. Also exposed as
+`POST /compare` on the enrichment API.
 
 ---
 
@@ -140,7 +144,7 @@ Import `n8n/hindsight_workflow.json`, configure credentials per `n8n/SETUP.md`, 
 | **BON-3 Dashboard** | `dashboard/index.html`; optional live CSV via `?csv=` query param |
 | **BON-4 Retry** | Gemini 5× / 3s — verified by `audit_n8n_cloud.py` |
 | **BON-5 Semantic Search** | Apply `migrations/001_pgvector_incidents.sql`; set `SUPABASE_*` in `.env`; `POST /search` |
-| **BON-6 Compare** | `POST /compare` (Flash vs Pro); `compare_models.js` is API-only (not in main Cloud workflow) | `test_compare.py`; bonus node test |
+| **BON-6 Compare** | Wired in Cloud wf: `Gemini — Extract (Pro)` → `Parse Gemini Pro` → `Compare Models` (non-blocking); also `POST /compare`; `compare_models.js` |
 | **BON-7 Batch** | Form accepts `.zip`; `prepare.js` fans out; fixture `samples/batch_incidents.zip` |
 | **BON-8 Alerting** | `patch_cloud_workflow.py` — pages on SEV1, confidential, or escalate |
 

@@ -8,8 +8,8 @@ Maps course brief §9 to implementation, architecture, tests, and evidence.
 | BON-2 | Daily Email Digest | `digest_workflow.json` + `digest_aggregate.js` (24h window) | [architecture.md](architecture.md) § BON-2 | `test_digest.py`, `test_bonus_nodes.mjs` | Import digest workflow; cron 08:00 UTC |
 | BON-3 | Live Dashboard | `dashboard/index.html` + `?csv=` published Sheet URL | [architecture.md](architecture.md) § BON-3 | fixture CSV server in tests | 📸 `screenshot-dashboard.png` |
 | BON-4 | Retry logic | Gemini HTTP `retryOnFail` 5× / 3s | workflow config | `audit_n8n_cloud.py` | audit row OK |
-| BON-5 | Semantic Search | Supabase pgvector + `POST /search`, `/index` | [architecture.md](architecture.md) § BON-5 | `test_search.py` | `migrations/001_pgvector_incidents.sql` |
-| BON-6 | Multi-model Compare | `POST /compare` (Flash vs Pro); `compare_models.js` | [architecture.md](architecture.md) § BON-6 | `test_compare.py`, bonus node test | API-only (not main Cloud workflow) |
+| BON-5 | Semantic Search | Supabase pgvector (`gemini-embedding-001`, 768-dim) + `POST /search`, `/index` | [architecture.md](architecture.md) § BON-5 | `test_search.py` (InMemory + SupabaseVectorStore) | live Supabase `zduaexkkhdnltyelvuwn` · 5 rows · HNSW · `match_*` RPC (MCP-verified 2026-06-26) |
+| BON-6 | Multi-model Compare | **Cloud workflow** `Gemini — Extract (Pro)` → `Parse Gemini Pro` → `Compare Models` (non-blocking, failure-isolated); also `POST /compare`; `compare_models.js` | [architecture.md](architecture.md) § BON-6 | `test_compare.py`, bonus node test | live exec 759 (Flash vs `gemini-3.1-pro-preview`); [sample-outputs/compare-flash-vs-pro.md](sample-outputs/compare-flash-vs-pro.md) |
 | BON-7 | Multi-file Batch | `prepare.js` ZIP fan-out (max 25); `batch.py` API | [architecture.md](architecture.md) § BON-7 | `test_batch.py`, `test_prepare.mjs` | `samples/batch_incidents.zip` |
 | BON-8 | Sensitivity Alerting | `Is SEV1?` OR confidential OR escalate → Page On-Call | [architecture.md](architecture.md) § BON-8 | `patch_cloud_workflow.py`, self-hosted `build_workflow.py` | exec 507 Page On-Call |
 

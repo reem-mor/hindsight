@@ -2,7 +2,9 @@
 """Builds the importable HINDSIGHT n8n workflow JSON.
 Written as a generator so the emitted JSON is always structurally valid.
 """
-import json, uuid, os
+import json
+import uuid
+import os
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 GEMINI_GENERATE_URL = (

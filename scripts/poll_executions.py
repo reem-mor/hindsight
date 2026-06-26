@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
-from n8n_cloud_api import WORKFLOW_ID, load_dotenv  # noqa: E402
+from n8n_cloud_api import load_dotenv  # noqa: E402
 
 
 def main() -> int:

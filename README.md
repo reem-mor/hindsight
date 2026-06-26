@@ -6,7 +6,7 @@
 
 **Enterprise document intelligence pipeline:** n8n · Google Gemini 3 Flash · FastAPI · Google Sheets · Gmail · Supabase pgvector
 
-[![tests](https://img.shields.io/badge/tests-198%20passing-brightgreen)](#verification)
+[![tests](https://img.shields.io/badge/tests-200%20passing-brightgreen)](#verification)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](#technology-stack)
 [![n8n](https://img.shields.io/badge/n8n-Cloud%20%2B%20Docker-orange)](#deployment-paths)
 [![Gemini](https://img.shields.io/badge/Gemini-3%20Flash%20%2B%20Vision-4285F4)](#technology-stack)
@@ -47,6 +47,10 @@ flowchart LR
     Flash["HTTP · strict JSON<br/>temp 0.2 · retry 5×/3s"]
     Parse["Parse + validate"]
   end
+  subgraph compare6["BON-6 · Multi-model compare (non-blocking)"]
+    Pro["Gemini 3.1 Pro<br/>parallel extract"]
+    Cmp["Compare Models<br/>Flash vs Pro diff"]
+  end
   subgraph brain["4 · Deterministic brain"]
     Enrich["FastAPI /enrich · enrich.js<br/>CVSS floor → SEV · sensitivity · routing"]
   end
@@ -61,6 +65,7 @@ flowchart LR
   Prep --> Flash
   Vision --> Flash
   Flash --> Parse --> Enrich
+  Parse --> Pro --> Cmp
   Enrich --> Sheets & Files & Gmail
 ```
 
@@ -217,8 +222,8 @@ All eight course bonus challenges are implemented and verified:
 | BON-2 | Daily email digest | `digest_workflow.json` + `digest_aggregate.js` | `test_digest.py`, Cloud wf active |
 | BON-3 | Live dashboard | [`dashboard/index.html`](dashboard/index.html) · `?csv=` | `docs/screenshot-dashboard.png` |
 | BON-4 | Retry logic | Gemini 5× / 3 s backoff | `audit_n8n_cloud.py` |
-| BON-5 | Semantic search | Supabase pgvector + `/search` `/index` | `test_search.py`, `run_live_search_test.py` |
-| BON-6 | Multi-model compare | `/compare` + `compare_models.js` | `test_compare.py` |
+| BON-5 | Semantic search | Supabase pgvector (`gemini-embedding-001`, 768-dim) + `/search` `/index` | `test_search.py` (incl. SupabaseVectorStore), live Supabase 5 rows |
+| BON-6 | Multi-model compare | **Wired in Cloud wf** (`Gemini Pro` → `Parse Pro` → `Compare Models`, non-blocking) + `/compare` | `test_compare.py`, live exec 757 |
 | BON-7 | Multi-file batch | `.zip` fan-out in `prepare.js` | `test_batch.py` |
 | BON-8 | Sensitivity alerting | SEV1 / confidential / escalate → Page On-Call | `patch_cloud_workflow.py` |
 
@@ -303,8 +308,8 @@ Evidence index: [`docs/VALIDATION.md`](docs/VALIDATION.md)
 | **Docker stack** | `docker_smoke_test.py` — API health, `/enrich` CVSS floor, n8n UI | ✅ 5/5 |
 | **Local FastAPI** | `/health`, `/enrich`, `/sensitivity`, `/digest/preview` exercised | ✅ |
 | **Email format** | per-document · SEV1 alert · 24h digest rendered + screenshotted | ✅ |
-| **Supabase (BON-5)** | pgvector 0.8.0 · `hindsight_incidents` 6×768-dim · HNSW index · `match_*` RPC · ranked search | ✅ live |
-| **Live E2E (form→email)** | real `.md` uploaded to the public form → exec **744** success: Gemini → SEV1/escalate/confidential → §8.2 subject → **Gmail sent** (msg-id `19f00ba3…`) | ✅ live |
+| **Supabase (BON-5)** | pgvector · `hindsight_incidents` **5×768-dim** · HNSW · `match_hindsight_incidents` RPC · embeddings via `gemini-embedding-001` (deterministic fallback when the free-tier quota is exhausted) · MCP-verified 2026-06-26 | ✅ live |
+| **Live E2E (form→email)** | SEV1 RCE PDF → public form → exec **757** success: Flash → enrich (CVSS 9.8 → SEV1/escalate/confidential) → Sheet + **Page On-Call (SEV1)** email; BON-6 Pro-compare branch run in parallel (Pro 429 → graceful degrade, exec still success). Earlier: exec 744 (`19f00ba3…`) | ✅ live |
 | **File types** | `.md` · `.txt` · `.pdf` (+embedded-image Vision) · `.docx` · `.zip` (batch) · `.png/.jpg` (Vision) | ✅ tested |
 
 Reproduce the live E2E (uploads a real file to the public form, polls the execution):

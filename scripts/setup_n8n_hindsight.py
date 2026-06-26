@@ -12,7 +12,6 @@ from urllib.request import Request, urlopen
 
 from n8n_cloud_api import (
     WORKFLOW_ID,
-    SHEET_ID_DEFAULT,
     load_dotenv,
     api_get,
     api_request,
@@ -50,8 +49,6 @@ def patch_hindsight_sheet(base: str, key: str, sheet_id: str) -> None:
 
 def try_create_via_bootstrap(base: str, key: str) -> str | None:
     """Attempt one-shot workflow: Manual Trigger -> Google Sheets create spreadsheet."""
-    wf_id = str(uuid.uuid4())
-    node_id = str(uuid.uuid4())
     bootstrap = {
         "name": "HINDSIGHT Bootstrap — Create Registry Sheet (delete me)",
         "nodes": [

@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
 
-from n8n_cloud_api import WORKFLOW_ID, GEMINI_GENERATE_URL, load_dotenv, api_get, api_request, strip_workflow_meta
+from n8n_cloud_api import (
+    WORKFLOW_ID,
+    GEMINI_GENERATE_URL,
+    GEMINI_PRO_GENERATE_URL,
+    load_dotenv,
+    api_get,
+    api_request,
+    strip_workflow_meta,
+)
 
 
 def patch_sev1_routing(wf: dict) -> bool:
@@ -96,7 +103,12 @@ def patch_form_zip(wf: dict) -> bool:
 
 
 def patch_gemini_model(wf: dict) -> bool:
-    """Point Gemini HTTP nodes at gemini-3-flash-preview (avoids 404 on bare gemini-3-flash)."""
+    """Pin Gemini HTTP nodes to working preview model strings (bare gemini-3-flash / -pro 404).
+
+    The Flash extract node → gemini-3-flash-preview; the BON-6 Pro compare node →
+    gemini-3.1-pro-preview. Model-aware so this normalizer never clobbers the Pro branch
+    back to Flash, and self-corrects either node to its intended model. Idempotent.
+    """
     changed = False
     for node in wf.get("nodes", []):
         if node.get("type") != "n8n-nodes-base.httpRequest":
@@ -104,8 +116,10 @@ def patch_gemini_model(wf: dict) -> bool:
         url = str(node.get("parameters", {}).get("url", ""))
         if "generativelanguage.googleapis.com" not in url or "generateContent" not in url:
             continue
-        if url != GEMINI_GENERATE_URL:
-            node.setdefault("parameters", {})["url"] = GEMINI_GENERATE_URL
+        is_pro = node.get("name") == "Gemini — Extract (Pro)" or "pro-preview" in url
+        target = GEMINI_PRO_GENERATE_URL if is_pro else GEMINI_GENERATE_URL
+        if url != target:
+            node.setdefault("parameters", {})["url"] = target
             changed = True
     return changed
 

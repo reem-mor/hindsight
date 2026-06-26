@@ -487,6 +487,64 @@
         1640,
         740
       ]
+    },
+    {
+      "id": "ce398bb8-989b-4381-af1c-4af36d250609",
+      "name": "Gemini \u2014 Extract (Pro)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        892,
+        676
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Prepare Document').item.json.geminiBody }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "58a1f726-5098-4470-b4ef-b2a430232216",
+      "name": "Parse Gemini Pro",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1112,
+        676
+      ],
+      "parameters": {
+        "jsCode": "const FENCE = String.fromCharCode(96, 96, 96);\nconst REQUIRED = [\"summary\", \"sentiment\", \"action_items\", \"confidence_score\", \"entities\"];\nconst VALID_SENTIMENT = { positive: 1, neutral: 1, negative: 1 };\n\nfunction validateGeminiShape(g) {\n  const missing = [];\n  for (let i = 0; i < REQUIRED.length; i++) {\n    if (g[REQUIRED[i]] === undefined) missing.push(REQUIRED[i]);\n  }\n  if (!g.incident_type && !g.classification) missing.push(\"incident_type|classification\");\n  if (!Array.isArray(g.action_items)) missing.push(\"action_items(array)\");\n  if (!g.entities || typeof g.entities !== \"object\" || Array.isArray(g.entities)) {\n    missing.push(\"entities(object)\");\n  }\n  if (missing.length) {\n    throw new Error(\"Gemini JSON missing required fields: \" + missing.join(\", \"));\n  }\n  if (typeof g.confidence_score === \"number\" && (g.confidence_score < 0 || g.confidence_score > 1)) {\n    throw new Error(\"confidence_score must be between 0 and 1\");\n  }\n}\n\nfunction normalizeSentiment(raw) {\n  const s = String(raw || \"neutral\").toLowerCase();\n  return VALID_SENTIMENT[s] ? s : \"neutral\";\n}\n\nconst items = $input.all();\nconst prep = $(\"Prepare Document\").all();\nconst out = [];\nfor (let idx = 0; idx < items.length; idx++) {\n  const resp = items[idx].json || {};\n  let raw = String(resp?.candidates?.[0]?.content?.parts?.[0]?.text || \"\").trim();\n  // Strip only a WRAPPING ```json \u2026 ``` fence pair \u2014 never a global backtick\n  // delete (that would corrupt inner SIEM command blocks in string values).\n  if (raw.indexOf(FENCE) === 0) {\n    raw = raw.slice(FENCE.length);\n    if (raw.toLowerCase().indexOf(\"json\") === 0) { raw = raw.slice(4); }\n    const end = raw.lastIndexOf(FENCE);\n    if (end !== -1) { raw = raw.slice(0, end); }\n    raw = raw.trim();\n  }\n  let g;\n  try {\n    g = JSON.parse(raw);\n  } catch (e) {\n    throw new Error(\"Gemini did not return valid JSON. First 200 chars: \" + raw.slice(0, 200));\n  }\n  validateGeminiShape(g);\n  // Gemini may return the \u00a75.4 `classification` field instead of our `incident_type`.\n  // Map it so enrich.js routes/floors correctly instead of defaulting to \"other\".\n  if (!g.incident_type && g.classification) { g.incident_type = String(g.classification); }\n  g.sentiment = normalizeSentiment(g.sentiment);\n  const p = (prep[idx] && prep[idx].json) ? prep[idx].json : {};\n  g.correlation_id = p.correlationId || null;\n  g.source_filename = p.sourceFilename || null;\n  out.push({ json: g });\n}\nreturn out;\n"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "646060b5-e1e3-4161-8156-596aa8c04725",
+      "name": "Compare Models",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1332,
+        676
+      ],
+      "parameters": {
+        "jsCode": "// Field-by-field diff of Flash vs Pro structured extractions (BON-6).\nconst flashItems = $(\"Parse Gemini JSON\").all();\nconst proItems = $(\"Parse Gemini Pro\").all();\nconst out = [];\n\nfor (let idx = 0; idx < flashItems.length; idx++) {\n  const flash = flashItems[idx].json || {};\n  const pro = (proItems[idx] && proItems[idx].json) ? proItems[idx].json : {};\n\n  function diffField(a, b, path, diffs) {\n    // typeof [] === typeof {} === \"object\", so also compare array-ness, else a\n    // dict-vs-list disagreement yields spurious per-key diffs instead of 1 mismatch.\n    if (typeof a !== typeof b || Array.isArray(a) !== Array.isArray(b)) {\n      diffs.push({ field: path || \"root\", flash: a, pro: b, kind: \"type_mismatch\" });\n      return;\n    }\n    if (a && typeof a === \"object\" && !Array.isArray(a)) {\n      // Walk the UNION of keys exactly once (mirrors Python compare.py); using\n      // `if (!a[k])` would re-diff falsy-but-present values and double-count.\n      const union = {};\n      Object.keys(a).forEach(function (k) { union[k] = 1; });\n      if (b && typeof b === \"object\") Object.keys(b).forEach(function (k) { union[k] = 1; });\n      Object.keys(union).sort().forEach(function (k) {\n        diffField(a[k], b[k], path ? path + \".\" + k : k, diffs);\n      });\n    } else if (Array.isArray(a)) {\n      if (JSON.stringify(a) !== JSON.stringify(b)) {\n        diffs.push({ field: path, flash: a, pro: b, kind: \"list_diff\" });\n      }\n    } else if (a !== b) {\n      diffs.push({ field: path, flash: a, pro: b, kind: \"value_diff\" });\n    }\n  }\n\n  const fieldDiffs = [];\n  diffField(flash, pro, \"\", fieldDiffs);\n\n  const flashClass = String(flash.incident_type || flash.classification || \"\");\n  const proClass = String(pro.incident_type || pro.classification || \"\");\n  const flashConf = Number(flash.confidence_score || 0);\n  const proConf = Number(pro.confidence_score || 0);\n\n  // Jaccard overlap of entity values (parity with compare.py).\n  function entitySet(e) {\n    const s = new Set();\n    if (e && typeof e === \"object\") {\n      Object.keys(e).forEach(function (k) {\n        if (Array.isArray(e[k])) e[k].forEach(function (v) { s.add(String(v)); });\n      });\n    }\n    return s;\n  }\n  const fSet = entitySet(flash.entities);\n  const pSet = entitySet(pro.entities);\n  const union = new Set([...fSet, ...pSet]);\n  let inter = 0;\n  fSet.forEach(function (v) { if (pSet.has(v)) inter++; });\n  const entityOverlap = union.size ? Math.round((inter / union.size) * 10000) / 10000 : 1.0;\n\n  const report = {\n    classification_agreement: flashClass === proClass,\n    confidence_delta: Math.round((proConf - flashConf) * 10000) / 10000,\n    entity_overlap_ratio: entityOverlap,\n    field_diff_count: fieldDiffs.length,\n    field_diffs: fieldDiffs.slice(0, 50),\n    flash_summary: String(flash.summary || \"\").slice(0, 300),\n    pro_summary: String(pro.summary || \"\").slice(0, 300),\n    compare_markdown: \"# Model compare (Flash vs Pro)\\n\\n\"\n      + \"| Metric | Value |\\n|---|---|\\n\"\n      + \"| Classification agreement | \" + (flashClass === proClass ? \"yes\" : \"no\") + \" |\\n\"\n      + \"| Confidence delta (Pro - Flash) | \" + (proConf - flashConf).toFixed(3) + \" |\\n\"\n      + \"| Field diffs | \" + fieldDiffs.length + \" |\\n\",\n  };\n\n  out.push({ json: report });\n}\nreturn out;\n"
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -528,6 +586,11 @@
         [
           {
             "node": "HINDSIGHT Enrich",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gemini \u2014 Extract (Pro)",
             "type": "main",
             "index": 0
           }
@@ -584,6 +647,28 @@
         [
           {
             "node": "Append to Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini \u2014 Extract (Pro)": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Pro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Pro": {
+      "main": [
+        [
+          {
+            "node": "Compare Models",
             "type": "main",
             "index": 0
           }

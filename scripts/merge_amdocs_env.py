@@ -108,7 +108,7 @@ def main() -> int:
     print("hindsight .env after merge:")
     for k, v in status.items():
         print(f"  {k}: {v}")
-    print(f"  AMDOCS_COURSE_ROOT: SET")
+    print("  AMDOCS_COURSE_ROOT: SET")
     return 0
 
 

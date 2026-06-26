@@ -8,7 +8,7 @@ Assignment mapping: [ASSIGNMENT-MAP.md](ASSIGNMENT-MAP.md) · Bonus detail: [bon
 
 | Suite | What it proves | Checks | Result |
 |---|---|---:|:---:|
-| FastAPI `pytest` | Core + bonus endpoints + sensitivity/catalog/alias/digest-window/escaping regressions | 70 | ✅ |
+| FastAPI `pytest` | Core + bonus endpoints + sensitivity/catalog/alias/digest-window/escaping + SupabaseVectorStore REST/RPC | 72 | ✅ |
 | Extractor `pytest` | MD + PDF(+image) + DOCX + TXT + standalone-image + corrupt-DOCX + cp1252 | 8 | ✅ |
 | Cloud `enrich` + `parse` | Parity + sensitivity-regex + sheet_row defaults + alias word-boundary + parse classification/fence | 76 | ✅ |
 | Cloud `prepare` | Upload guards, ZIP, MIME | 7 | ✅ |
@@ -18,7 +18,7 @@ Assignment mapping: [ASSIGNMENT-MAP.md](ASSIGNMENT-MAP.md) · Bonus detail: [bon
 | `verify_all_bonuses.py` | All 8 bonuses + workflow activation | 10 | ✅ |
 | `docker_smoke_test.py` | Docker compose health + enrich smoke (Supabase optional) | 5 | ✅ |
 | `audit_n8n_cloud.py` | Nodes, credentials, retry, Gemini model | 1 report | ✅ |
-| Live E2E | Form → Gemini → Sheet → Gmail | exec 507/510/523/524 | ✅ |
+| Live E2E | Form → Gemini → Sheet → Gmail (+BON-6 Flash/Pro branch) | exec 759 · 757 · 510 | ✅ |
 
 ## 2. Reproduce
 
@@ -54,8 +54,8 @@ Cloud deploy (mutating):
 | **BON-2 Daily Digest** | `test_digest.py`; `digest_aggregate.js`; `build_digest_workflow.py` |
 | **BON-3 Dashboard** | `dashboard/index.html`; `?csv=`; 📸 `screenshot-dashboard.png` |
 | **BON-4 Retry** | audit `Gemini retry policy (BON-4)` OK |
-| **BON-5 Semantic Search** | `test_search.py`; `migrations/001_pgvector_incidents.sql` |
-| **BON-6 Compare** | `test_compare.py`; `POST /compare`; `compare_models.js` (API-only) |
+| **BON-5 Semantic Search** | `test_search.py` (InMemory + SupabaseVectorStore); `migrations/001_pgvector_incidents.sql`; live Supabase 5 rows · `gemini-embedding-001` 768-dim · HNSW · `match_*` RPC |
+| **BON-6 Compare** | `test_compare.py`; `POST /compare`; **wired in Cloud wf** `Gemini — Extract (Pro)` (`gemini-3.1-pro-preview`) → `Parse Gemini Pro` → `Compare Models`; live exec 759 (agreement=true, entity-overlap 0.90) |
 | **BON-7 Batch** | `test_batch.py`; `test_prepare.mjs` zip; `batch_incidents.zip` |
 | **BON-8 Alerting** | `patch_cloud_workflow.py`; `build_workflow.py`; exec 507 Page On-Call |
 

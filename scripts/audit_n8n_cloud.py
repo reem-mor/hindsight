@@ -104,6 +104,18 @@ def main() -> int:
     elif "gemini-3-flash" in url:
         add("review", "Gemini model string", "gemini-3-flash — run patch_cloud_workflow.py for preview URL")
 
+    # BON-6 Multi-model Compare — Flash vs Pro non-blocking branch
+    pro = nodes.get("Gemini — Extract (Pro)", {})
+    pro_url = str(pro.get("parameters", {}).get("url", ""))
+    if "Compare Models" in nodes and "Parse Gemini Pro" in nodes and "pro-preview" in pro_url:
+        add(
+            "ok",
+            "BON-6 Flash/Pro compare branch",
+            f"Pro -> {pro_url.split('/models/')[-1]}; onError={pro.get('onError')}",
+        )
+    else:
+        add("review", "BON-6 Flash/Pro compare branch", "missing Pro/Compare nodes — run sync_n8n_cloud_nodes.py")
+
     sheets = nodes.get(SHEETS_NODE, {})
     sheets_creds = sheets.get("credentials") or {}
     sheets_p = sheets.get("parameters", {})

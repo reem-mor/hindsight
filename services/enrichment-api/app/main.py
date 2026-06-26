@@ -174,7 +174,9 @@ def enrich_endpoint(payload: GeminiResult) -> EnrichedResult:
             store = get_vector_store()
             store.upsert(
                 document_id=result.document_id,
-                filename=str(getattr(payload, "source_filename", "") or ""),
+                # GeminiResult carries the upload name as `filename`; older callers used
+                # `source_filename`. Prefer the real field so search hits are labelled.
+                filename=str(getattr(payload, "filename", "") or getattr(payload, "source_filename", "") or ""),
                 classification=payload.incident_type,
                 department=result.department,
                 sensitivity=result.sensitivity.value,
