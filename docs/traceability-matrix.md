@@ -26,7 +26,7 @@ Legend: ✅ automated test · 📸 screenshot · ⚙️ workflow config · ✋ l
 | REQ-P3 | Gemini strict JSON | Gemini HTTP + [extraction_prompt.md](../prompts/extraction_prompt.md) | exec 507 | ✅ |
 | REQ-P4 | Metadata enrichment | [enrich.js](../n8n/cloud/nodes/enrich.js); `POST /enrich` | 60 node checks + pytest | ✅ |
 | REQ-P5 | Google Sheets append | [sheet_row.js](../n8n/cloud/nodes/sheet_row.js) | 📸 screenshot-sheet | ✅ |
-| REQ-P6 | Output file + email | [compose.js](../n8n/cloud/nodes/compose.js); self-hosted write node | 📸 screenshot-email | ✅ |
+| REQ-P6 | Output file + email | [compose.js](../n8n/cloud/nodes/compose.js); self-hosted write node | 📸 screenshot-email-incident | ✅ |
 
 ## Gemini (REQ-G*)
 
@@ -58,7 +58,7 @@ Legend: ✅ automated test · 📸 screenshot · ⚙️ workflow config · ✋ l
 | ID | Requirement | File | Evidence | Status |
 |---|---|---|---|---|
 | REQ-M1 | OAuth2 send, configurable recipient | Page On-Call + Postmortem Filed | audit `reem.mor3@gmail.com` | ✅ |
-| REQ-M2 | HTML template fields + Sheet registry link | [compose.js](../n8n/cloud/nodes/compose.js) | 📸 screenshot-email; §8 link by `document_id` | ✅ |
+| REQ-M2 | HTML template fields + Sheet registry link | [compose.js](../n8n/cloud/nodes/compose.js) | 📸 screenshot-email-incident; §8 link by `document_id` | ✅ |
 
 ## Reliability (REQ-R*)
 

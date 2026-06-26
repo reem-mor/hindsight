@@ -83,6 +83,14 @@ flowchart LR
 
 Deep dive: [`docs/architecture.md`](docs/architecture.md) · source: [`docs/architecture.mmd`](docs/architecture.mmd)
 
+**Live Cloud workflow** (`aYEv22StywIPL3Rq`) — the deployed pipeline, including the non-blocking **BON-6** Flash-vs-Pro compare branch and the **BON-8** SEV1/confidential alert routing:
+
+![HINDSIGHT — Cloud workflow canvas](docs/screenshot-workflow.png)
+
+**Daily digest workflow** (`L46dvnaJbKGvkCxH`, BON-2) — a separate scheduled pipeline that emails a 24-hour SOC summary:
+
+![HINDSIGHT — Daily digest workflow](docs/screenshot-digest-workflow.png)
+
 ---
 
 ## Technology stack
@@ -273,21 +281,24 @@ node scripts\e2e_cloud_form.mjs
 
 ## Screenshots & evidence
 
-| Artifact | Path |
-|---|---|
-| Architecture diagram | [`docs/architecture.png`](docs/architecture.png) |
-| n8n workflow canvas | [`docs/screenshot-workflow.png`](docs/screenshot-workflow.png) |
-| Cloud form | [`docs/screenshot-form-cloud.png`](docs/screenshot-form-cloud.png) |
-| Form success | [`docs/screenshot-form-success.png`](docs/screenshot-form-success.png) |
-| Execution detail | [`docs/screenshot-execution.png`](docs/screenshot-execution.png) |
-| Google Sheet row | [`docs/screenshot-sheet.png`](docs/screenshot-sheet.png) |
-| Gmail notification | [`docs/screenshot-email.png`](docs/screenshot-email.png) |
-| Live dashboard (BON-3) | [`docs/screenshot-dashboard.png`](docs/screenshot-dashboard.png) |
-| FastAPI OpenAPI / REST | [`docs/screenshot-fastapi.png`](docs/screenshot-fastapi.png) |
-| Local n8n (Docker) | [`docs/screenshot-n8n-local-setup.png`](docs/screenshot-n8n-local-setup.png) |
-| Email — per-document (§8.2) | [`docs/screenshot-email-incident.png`](docs/screenshot-email-incident.png) |
-| Email — SEV1 alert (BON-8) | [`docs/screenshot-email-alert.png`](docs/screenshot-email-alert.png) |
-| Email — 24h digest (BON-2) | [`docs/screenshot-email-digest.png`](docs/screenshot-email-digest.png) |
+| Artifact | Path | Source |
+|---|---|---|
+| Architecture diagram | [`docs/architecture.png`](docs/architecture.png) | rendered (mermaid) |
+| **n8n workflow canvas** | [`docs/screenshot-workflow.png`](docs/screenshot-workflow.png) | **live capture** |
+| **Daily digest workflow (BON-2)** | [`docs/screenshot-digest-workflow.png`](docs/screenshot-digest-workflow.png) | **live capture** |
+| **Execution #759 — success** | [`docs/screenshot-execution.png`](docs/screenshot-execution.png) | **live capture** |
+| **Google Sheet registry** | [`docs/screenshot-sheet.png`](docs/screenshot-sheet.png) | **live capture** |
+| **Supabase — Table Editor (BON-5)** | [`docs/screenshot-supabase-console.png`](docs/screenshot-supabase-console.png) | **live capture** |
+| **Supabase — project overview** | [`docs/screenshot-supabase-overview.png`](docs/screenshot-supabase-overview.png) | **live capture** |
+| Cloud form intake | [`docs/screenshot-form-cloud.png`](docs/screenshot-form-cloud.png) | live capture |
+| Form success | [`docs/screenshot-form-success.png`](docs/screenshot-form-success.png) | live capture |
+| FastAPI OpenAPI / REST | [`docs/screenshot-fastapi.png`](docs/screenshot-fastapi.png) | live capture |
+| Local n8n (Docker) | [`docs/screenshot-n8n-local-setup.png`](docs/screenshot-n8n-local-setup.png) | live capture |
+| Live dashboard (BON-3) | [`docs/screenshot-dashboard.png`](docs/screenshot-dashboard.png) | rendered from Sheet CSV |
+| Email — per-document (§8.2) | [`docs/screenshot-email-incident.png`](docs/screenshot-email-incident.png) | rendered from `compose.js` |
+| Email — SEV1 alert (BON-8) | [`docs/screenshot-email-alert.png`](docs/screenshot-email-alert.png) | rendered from `compose.js` |
+| Email — 24h digest (BON-2) | [`docs/screenshot-email-digest.png`](docs/screenshot-email-digest.png) | rendered from `digest_aggregate.js` |
+| Supabase search summary | [`docs/screenshot-supabase.png`](docs/screenshot-supabase.png) | rendered from live data |
 
 Email bodies are rendered from the **exact deployed node code** — regenerate the HTML + PNGs with:
 
