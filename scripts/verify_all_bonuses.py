@@ -8,6 +8,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -119,15 +120,16 @@ def main() -> int:
         if ok("BON-1 Gemini Vision (extractor PDF+images)", False, "sample PDF missing"):
             pass
 
-    # BON-2 Digest
+    # BON-2 Digest — use a CURRENT timestamp so the 24h window check isn't date-sensitive.
     total += 1
     try:
+        recent_ts = datetime.now(timezone.utc).isoformat()
         digest = post_json(
             f"{API}/digest/preview",
             {
                 "rows": [
                     {
-                        "processed_at": "2026-06-24T10:00:00+00:00",
+                        "processed_at": recent_ts,
                         "classification": "intrusion",
                         "sensitivity": "confidential",
                         "routing_tag": "escalate",
