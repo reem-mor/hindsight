@@ -177,7 +177,10 @@ class EnrichedResult(BaseModel):
 
     slo_impact: SloImpact
     recurrence_fingerprint: str
-    recurrence_seen_count: int
+    # Optional (default 0) so the EnrichedResult schema stays in lockstep with enrich.js,
+    # which omits recurrence (n8n Code nodes are stateless; Cloud tracks recurrence in the
+    # Sheets registry, not in-process). See docs/edge-case-matrix.md.
+    recurrence_seen_count: int = 0
 
     # Cyber/SecOps hybrid echoes (None for pure SRE postmortems).
     cvss_score: Optional[float] = None

@@ -116,6 +116,21 @@ const zipBuf = makeStoredZip('batch/a.md', '# batch item');
 const zipOut = await runPrepare([itemFromBuffer('batch.zip', 'zip', zipBuf, 'application/zip')]);
 ok('prepare.zip_fanout', zipOut.length === 1 && zipOut[0].json.isBatchItem === true);
 
+// BON-1 Vision: a .pdf is sent to Gemini as inline_data (mime application/pdf), not as text —
+// the only data-path without prior unit coverage (flagged by the RC coverage audit).
+const pdfOut = await runPrepare([
+  itemFromBuffer('vuln_scan.pdf', 'pdf', Buffer.from('%PDF-1.4 minimal'), 'application/pdf'),
+]);
+let pdfBody = pdfOut[0].json.geminiBody;
+if (typeof pdfBody === 'string') pdfBody = JSON.parse(pdfBody);
+const pdfParts = (pdfBody && pdfBody.contents && pdfBody.contents[0] && pdfBody.contents[0].parts) || [];
+ok('prepare.pdf_isPdf', pdfOut.length === 1 && pdfOut[0].json.isPdf === true);
+ok(
+  'prepare.pdf_vision_inline_data',
+  pdfParts.some((p) => p.inline_data && p.inline_data.mime_type === 'application/pdf' && !!p.inline_data.data),
+  'expected an inline_data application/pdf part for the PDF Vision branch',
+);
+
 const total = pass + failures.length;
 console.log(`\nHINDSIGHT prepare node tests: ${pass}/${total} passed`);
 if (failures.length) {

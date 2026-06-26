@@ -6,7 +6,7 @@
 
 **Enterprise document intelligence pipeline:** n8n · Google Gemini 3 Flash · FastAPI · Google Sheets · Gmail · Supabase pgvector
 
-[![tests](https://img.shields.io/badge/tests-200%20passing-brightgreen)](#verification)
+[![tests](https://img.shields.io/badge/tests-202%20passing-brightgreen)](#verification)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](#technology-stack)
 [![n8n](https://img.shields.io/badge/n8n-Cloud%20%2B%20Docker-orange)](#deployment-paths)
 [![Gemini](https://img.shields.io/badge/Gemini-3%20Flash%20%2B%20Vision-4285F4)](#technology-stack)
@@ -284,7 +284,7 @@ node scripts\e2e_cloud_form.mjs
 | Gmail notification | [`docs/screenshot-email.png`](docs/screenshot-email.png) |
 | Live dashboard (BON-3) | [`docs/screenshot-dashboard.png`](docs/screenshot-dashboard.png) |
 | FastAPI OpenAPI / REST | [`docs/screenshot-fastapi.png`](docs/screenshot-fastapi.png) |
-| Local n8n (Docker) | [`docs/screenshot-n8n-local.png`](docs/screenshot-n8n-local.png) |
+| Local n8n (Docker) | [`docs/screenshot-n8n-local-setup.png`](docs/screenshot-n8n-local-setup.png) |
 | Email — per-document (§8.2) | [`docs/screenshot-email-incident.png`](docs/screenshot-email-incident.png) |
 | Email — SEV1 alert (BON-8) | [`docs/screenshot-email-alert.png`](docs/screenshot-email-alert.png) |
 | Email — 24h digest (BON-2) | [`docs/screenshot-email-digest.png`](docs/screenshot-email-digest.png) |
@@ -308,12 +308,12 @@ Evidence index: [`docs/VALIDATION.md`](docs/VALIDATION.md)
 | **Docker stack** | `docker_smoke_test.py` — API health, `/enrich` CVSS floor, n8n UI | ✅ 5/5 |
 | **Local FastAPI** | `/health`, `/enrich`, `/sensitivity`, `/digest/preview` exercised | ✅ |
 | **Email format** | per-document · SEV1 alert · 24h digest rendered + screenshotted | ✅ |
-| **Supabase (BON-5)** | pgvector · `hindsight_incidents` **5×768-dim** · HNSW · `match_hindsight_incidents` RPC · embeddings via `gemini-embedding-001` (deterministic fallback when the free-tier quota is exhausted) · MCP-verified 2026-06-26 | ✅ live |
-| **Live E2E (form→email)** | SEV1 RCE PDF → public form → exec **757** success: Flash → enrich (CVSS 9.8 → SEV1/escalate/confidential) → Sheet + **Page On-Call (SEV1)** email; BON-6 Pro-compare branch run in parallel (Pro 429 → graceful degrade, exec still success). Earlier: exec 744 (`19f00ba3…`) | ✅ live |
+| **Supabase (BON-5)** | pgvector · `hindsight_incidents` **5×768-dim** · HNSW · `match_hindsight_incidents` RPC · **real `gemini-embedding-001` embeddings** (live search ranks the OpenSSL docs at 0.87+) · real console captures below · MCP-verified 2026-06-26 | ✅ live |
+| **Live E2E (form→email)** | OpenSSL RCE → public form → exec **759** success: Flash → enrich (CVSS 9.8 → SEV1/escalate/confidential) → Sheet + **Page On-Call (SEV1)** email + **populated BON-6 Flash-vs-Pro compare** (agreement=true, entity-overlap 0.90). Earlier: 757 (Pro-429 graceful-degrade), 744 | ✅ live |
 | **File types** | `.md` · `.txt` · `.pdf` (+embedded-image Vision) · `.docx` · `.zip` (batch) · `.png/.jpg` (Vision) | ✅ tested |
 
 Reproduce the live E2E (uploads a real file to the public form, polls the execution):
-`node scripts\e2e_cloud_form.mjs`. Sticky notes: `scripts/add_cloud_sticky_notes.py`. Supabase evidence: [`docs/screenshot-supabase.png`](docs/screenshot-supabase.png).
+`node scripts\e2e_cloud_form.mjs`. Sticky notes: `scripts/add_cloud_sticky_notes.py`. Supabase evidence — **real console** [`screenshot-supabase-console.png`](docs/screenshot-supabase-console.png) (Table Editor, 5 rows) · [`screenshot-supabase-overview.png`](docs/screenshot-supabase-overview.png) (project Healthy · 100% success · no advisor issues); rendered summary card [`screenshot-supabase.png`](docs/screenshot-supabase.png).
 
 ---
 

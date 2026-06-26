@@ -30,7 +30,8 @@ Everything a reviewer needs to verify the project — **most of it with no login
 ## 3. Verification evidence (already captured)
 
 - **Cloud audit** (`scripts/audit_n8n_cloud.py`): all required nodes present, Gemini `gemini-3-flash-preview`, retry 5×/3s, 14-column flatten, Gemini/Sheets/Gmail credentials bound, recent executions = success. Full report: [`docs/n8n-cloud-audit.json`](n8n-cloud-audit.json).
-- **Tests**: 188 automated (FastAPI 67, extractor 7, node bodies 72 + prepare 7 + compose 8 + bonus 7 + self-hosted 20). `node`/`pytest` commands in the [README](../README.md#verification).
+- **Tests**: 202 automated (FastAPI 72, extractor 8, node bodies 76 + prepare 9 + compose 8 + bonus 9 + self-hosted 20). `node`/`pytest` commands in the [README](../README.md#verification).
+- **Supabase (BON-5) real console**: [`screenshot-supabase-console.png`](screenshot-supabase-console.png) (Table Editor — 5 incident rows, `vector(768)` + HNSW `vector_cosine_ops`) and [`screenshot-supabase-overview.png`](screenshot-supabase-overview.png) (project `Healthy` · last migration `hindsight_incidents_hnsw_index` · 120 requests · 100% success · *Advisor found no issues*). Schema/RPC also reproducible via the Supabase MCP.
 - **BON-5 Supabase semantic search — live‑verified:**
 
   ```text

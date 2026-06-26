@@ -11,7 +11,7 @@ Assignment mapping: [ASSIGNMENT-MAP.md](ASSIGNMENT-MAP.md) · Bonus detail: [bon
 | FastAPI `pytest` | Core + bonus endpoints + sensitivity/catalog/alias/digest-window/escaping + SupabaseVectorStore REST/RPC | 72 | ✅ |
 | Extractor `pytest` | MD + PDF(+image) + DOCX + TXT + standalone-image + corrupt-DOCX + cp1252 | 8 | ✅ |
 | Cloud `enrich` + `parse` | Parity + sensitivity-regex + sheet_row defaults + alias word-boundary + parse classification/fence | 76 | ✅ |
-| Cloud `prepare` | Upload guards, ZIP, MIME | 7 | ✅ |
+| Cloud `prepare` | Upload guards, ZIP, MIME, **PDF→Vision inline_data** | 9 | ✅ |
 | Cloud `compose` | §7.2 row + §8.2 subject contract + Sheet link | 8 | ✅ |
 | Bonus Code nodes | digest severity-from-CVSS + compare diff/type-mismatch/overlap (BON-2/6) | 9 | ✅ |
 | Self-hosted workflow | every Code-node parses + §8.2 subject + output_docs JSON & MD + retry | 20 | ✅ |
@@ -54,7 +54,7 @@ Cloud deploy (mutating):
 | **BON-2 Daily Digest** | `test_digest.py`; `digest_aggregate.js`; `build_digest_workflow.py` |
 | **BON-3 Dashboard** | `dashboard/index.html`; `?csv=`; 📸 `screenshot-dashboard.png` |
 | **BON-4 Retry** | audit `Gemini retry policy (BON-4)` OK |
-| **BON-5 Semantic Search** | `test_search.py` (InMemory + SupabaseVectorStore); `migrations/001_pgvector_incidents.sql`; live Supabase 5 rows · `gemini-embedding-001` 768-dim · HNSW · `match_*` RPC |
+| **BON-5 Semantic Search** | `test_search.py` (InMemory + SupabaseVectorStore); `migrations/001_pgvector_incidents.sql`; live Supabase 5 rows · `gemini-embedding-001` 768-dim · HNSW · `match_*` RPC · real console: `screenshot-supabase-console.png` + `screenshot-supabase-overview.png` |
 | **BON-6 Compare** | `test_compare.py`; `POST /compare`; **wired in Cloud wf** `Gemini — Extract (Pro)` (`gemini-3.1-pro-preview`) → `Parse Gemini Pro` → `Compare Models`; live exec 759 (agreement=true, entity-overlap 0.90) |
 | **BON-7 Batch** | `test_batch.py`; `test_prepare.mjs` zip; `batch_incidents.zip` |
 | **BON-8 Alerting** | `patch_cloud_workflow.py`; `build_workflow.py`; exec 507 Page On-Call |
@@ -70,7 +70,7 @@ See [edge-case-matrix.md](edge-case-matrix.md) — zero-byte, MIME mismatch, par
 | Figure 1 architecture | `docs/architecture.png` | `node scripts/render_architecture.mjs` |
 | Dashboard (BON-3) | `docs/screenshot-dashboard.png` | `node scripts/capture_screenshots.mjs` |
 | FastAPI OpenAPI | `docs/screenshot-fastapi.png` | same |
-| Local n8n UI | `docs/screenshot-n8n-local.png` | same (Docker on :5678) |
+| Local n8n UI | `docs/screenshot-n8n-local-setup.png` | same (Docker on :5678) |
 | Cloud form (grading intake) | `docs/screenshot-form-cloud.png` | Playwright MCP public form URL |
 
 ## 6. Live E2E
