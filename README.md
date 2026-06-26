@@ -6,7 +6,7 @@
 
 **Enterprise document intelligence pipeline:** n8n · Google Gemini 3 Flash · FastAPI · Google Sheets · Gmail · Supabase pgvector
 
-[![tests](https://img.shields.io/badge/tests-197%20passing-brightgreen)](#verification)
+[![tests](https://img.shields.io/badge/tests-198%20passing-brightgreen)](#verification)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](#technology-stack)
 [![n8n](https://img.shields.io/badge/n8n-Cloud%20%2B%20Docker-orange)](#deployment-paths)
 [![Gemini](https://img.shields.io/badge/Gemini-3%20Flash%20%2B%20Vision-4285F4)](#technology-stack)
@@ -262,7 +262,7 @@ node scripts\capture_screenshots.mjs
 node scripts\e2e_cloud_form.mjs
 ```
 
-**CI** (`.github/workflows/test.yml`): pytest · ruff · node-body tests · optional Cloud audit.
+**CI** (`.github/workflows/test.yml`): pytest (enrichment + extractor) · node-body tests · ruff lint.
 
 ---
 
@@ -304,8 +304,11 @@ Evidence index: [`docs/VALIDATION.md`](docs/VALIDATION.md)
 | **Local FastAPI** | `/health`, `/enrich`, `/sensitivity`, `/digest/preview` exercised | ✅ |
 | **Email format** | per-document · SEV1 alert · 24h digest rendered + screenshotted | ✅ |
 | **Supabase (BON-5)** | pgvector 0.8.0 · `hindsight_incidents` 6×768-dim · HNSW index · `match_*` RPC · ranked search | ✅ live |
+| **Live E2E (form→email)** | real `.md` uploaded to the public form → exec **744** success: Gemini → SEV1/escalate/confidential → §8.2 subject → **Gmail sent** (msg-id `19f00ba3…`) | ✅ live |
+| **File types** | `.md` · `.txt` · `.pdf` (+embedded-image Vision) · `.docx` · `.zip` (batch) · `.png/.jpg` (Vision) | ✅ tested |
 
-Sticky notes on the Cloud workflow are applied/refreshed with `scripts/add_cloud_sticky_notes.py`.
+Reproduce the live E2E (uploads a real file to the public form, polls the execution):
+`node scripts\e2e_cloud_form.mjs`. Sticky notes: `scripts/add_cloud_sticky_notes.py`. Supabase evidence: [`docs/screenshot-supabase.png`](docs/screenshot-supabase.png).
 
 ---
 

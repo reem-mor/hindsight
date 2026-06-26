@@ -43,13 +43,10 @@ class SeverityVerdict:
     review_needed: bool
 
 
-def _impact_hits(text: str) -> list[str]:
+def _impact_hits(text: str) -> int:
+    """Number of high-impact-language signals in the summary (only the count is used)."""
     text = (text or "").lower()
-    hits = []
-    for pat in _HIGH_IMPACT_PATTERNS:
-        if re.search(pat, text):
-            hits.append(pat.strip("\\b").replace("\\b", "").replace("(", "").replace(")", ""))
-    return hits
+    return sum(1 for pat in _HIGH_IMPACT_PATTERNS if re.search(pat, text))
 
 
 def _cvss_band(cvss: float) -> Severity | None:
@@ -98,9 +95,9 @@ def score_severity(
     # 3. Customer-impact language in the summary.
     hits = _impact_hits(summary)
     if hits:
-        pts = min(len(hits) * 2, 4)
+        pts = min(hits * 2, 4)
         score += pts
-        rationale.append(f"high-impact language ({len(hits)} signal/s) (+{pts})")
+        rationale.append(f"high-impact language ({hits} signal/s) (+{pts})")
 
     # 4. Downtime magnitude.
     ttr = metrics.ttr_minutes or 0

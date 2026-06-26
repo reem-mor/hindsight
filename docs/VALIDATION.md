@@ -9,7 +9,7 @@ Assignment mapping: [ASSIGNMENT-MAP.md](ASSIGNMENT-MAP.md) · Bonus detail: [bon
 | Suite | What it proves | Checks | Result |
 |---|---|---:|:---:|
 | FastAPI `pytest` | Core + bonus endpoints + sensitivity/catalog/alias/digest-window/escaping regressions | 70 | ✅ |
-| Extractor `pytest` | MD + real PDF/image (BON-1) + DOCX + TXT happy paths, corrupt-DOCX guard, cp1252 fallback | 7 | ✅ |
+| Extractor `pytest` | MD + PDF(+image) + DOCX + TXT + standalone-image + corrupt-DOCX + cp1252 | 8 | ✅ |
 | Cloud `enrich` + `parse` | Parity + sensitivity-regex + sheet_row defaults + alias word-boundary + parse classification/fence | 76 | ✅ |
 | Cloud `prepare` | Upload guards, ZIP, MIME | 7 | ✅ |
 | Cloud `compose` | §7.2 row + §8.2 subject contract + Sheet link | 8 | ✅ |

@@ -2,7 +2,7 @@
   "workflow_id": "aYEv22StywIPL3Rq",
   "name": "HINDSIGHT \u2014 Postmortem Intelligence (Cloud)",
   "active": true,
-  "nodes_total": 16,
+  "nodes_total": 17,
   "checks": [
     {
       "status": "ok",
@@ -117,7 +117,7 @@
     {
       "status": "ok",
       "item": "Credentials in instance",
-      "detail": "{\"googleSheetsOAuth2Api\": [\"Google Sheets Amdocs Course API\", \"Google Sheets Re'em@reem.mor3\"], \"pineconeApi\": [\"Amdocs Course Pinecone account API\"], \"perplexityApi\": [\"Perplexity account\"], \"gmailOAuth2\": [\"Gmail account 2\", \"Gmail account\", \"Gmail Amdocs course API\", \"Gmail Re'em@1\"], \"telegramApi\": [\"CourseOps Bot\", \"Telegram account 2\", \"Telegram account  @ newbotn8natomic\", \"Telegram n8n atomic1008\"], \"googlePalmApi\": [\"Google Gemini(PaLM) Api account\"], \"slackOAuth2Api\": [\"Slack OAuth2 API\"], \"anthropicApi\": [\"Anthropic n8n course May26\", \"Anthropic account\", \"Anthropic n8n course\"], \"openAiApi\": [\"OpenAI n8n course May26\", \"n8n free OpenAI API credits\", \"OpenAi n8n course\"], \"googleDriveOAuth2Api\": [\"Google Drive Amdocs course API\", \"Google Drive OAuth2 API\", \"Google Drive account 2\", \"Google Drive account\"], \"googleCalendarOAuth2Api\": [\"Google Calendar account 2\", \"Google Calendar account @reem.mor\", \"Google Calendar Re'em@reem.mor3\"], \"serpApi\": [\"SerpApi account\"]}"
+      "detail": "{\"ollamaApi\": [\"Ollama account\"], \"googleSheetsOAuth2Api\": [\"Google Sheets Amdocs Course API\", \"Google Sheets Re'em@reem.mor3\"], \"pineconeApi\": [\"Amdocs Course Pinecone account API\"], \"perplexityApi\": [\"Perplexity account\"], \"gmailOAuth2\": [\"Gmail account 2\", \"Gmail account\", \"Gmail Amdocs course API\", \"Gmail Re'em@1\"], \"telegramApi\": [\"CourseOps Bot\", \"Telegram account 2\", \"Telegram account  @ newbotn8natomic\", \"Telegram n8n atomic1008\"], \"googlePalmApi\": [\"Google Gemini(PaLM) Api account\"], \"slackOAuth2Api\": [\"Slack OAuth2 API\"], \"anthropicApi\": [\"Anthropic n8n course May26\", \"Anthropic account\", \"Anthropic n8n course\"], \"openAiApi\": [\"OpenAI n8n course May26\", \"n8n free OpenAI API credits\", \"OpenAi n8n course\"], \"googleDriveOAuth2Api\": [\"Google Drive Amdocs course API\", \"Google Drive OAuth2 API\", \"Google Drive account 2\", \"Google Drive account\"], \"googleCalendarOAuth2Api\": [\"Google Calendar account 2\", \"Google Calendar account @reem.mor\", \"Google Calendar Re'em@reem.mor3\"], \"serpApi\": [\"SerpApi account\"]}"
     },
     {
       "status": "ok",
