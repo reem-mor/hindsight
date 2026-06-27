@@ -111,6 +111,76 @@ Diagram source: [`docs/architecture.svg`](docs/architecture.svg) → PNG via `sc
 
 ---
 
+## 📸 See it working
+
+Every image below is a **live capture from the running system** — the whole pipeline, end to end. **Click any screenshot to open it full-size.** (The Cloud workflow canvas and the daily-digest workflow are shown in the [Architecture](#architecture) section just above.)
+
+### 1 · Intake — the public Cloud form
+
+A reviewer can upload a SIEM export, vuln scan, or phishing report with **no login** via the [production form](https://reemmor.app.n8n.cloud/form/21593841-f8b8-43a2-88a8-8595ad3e2f39). Upload screen → submission confirmed:
+
+| Upload form | Submission confirmed |
+|:---:|:---:|
+| [![Cloud form intake](docs/screenshot-form-cloud.png)](docs/screenshot-form-cloud.png) | [![Form success](docs/screenshot-form-success.png)](docs/screenshot-form-success.png) |
+
+### 2 · Pipeline run — live execution #759
+
+A real OpenSSL RCE document flowing **form → Gemini Flash → enrich (CVSS 9.8 → SEV1 / escalate / confidential) → Sheet + Page-On-Call email + BON-6 Flash-vs-Pro compare**, every node green:
+
+[![Execution #759 — success](docs/screenshot-execution.png)](docs/screenshot-execution.png)
+
+### 3 · Results — Google Sheets registry
+
+One row per document on the 14-column `Incidents` tab (§7.2), appended live by the workflow:
+
+[![Google Sheet registry](docs/screenshot-sheet.png)](docs/screenshot-sheet.png)
+
+### 4 · Live dashboard (BON-3)
+
+`dashboard/index.html` reading the published-Sheet CSV — CVSS distribution, sensitivity split, and routing-tag breakdown via Chart.js:
+
+[![Live dashboard](docs/screenshot-dashboard.png)](docs/screenshot-dashboard.png)
+
+### 5 · Email notifications (§8 · BON-2 · BON-8)
+
+Rendered from the **exact deployed `compose.js` / `digest_aggregate.js`** node code:
+
+**Per-document summary (§8.2):**
+
+[![Email — per-document incident summary](docs/screenshot-email-incident.png)](docs/screenshot-email-incident.png)
+
+**SEV1 "Page On-Call" alert (BON-8):**
+
+[![Email — SEV1 alert](docs/screenshot-email-alert.png)](docs/screenshot-email-alert.png)
+
+**24-hour SOC digest (BON-2):**
+
+[![Email — 24h digest](docs/screenshot-email-digest.png)](docs/screenshot-email-digest.png)
+
+### 6 · Semantic search — Supabase pgvector (BON-5)
+
+Real `gemini-embedding-001` 768-dim vectors in the `hindsight_incidents` table, with an HNSW index and `match_hindsight_incidents` RPC. Table Editor → project overview:
+
+| Table Editor (5 rows) | Project overview (Healthy · 100% success) |
+|:---:|:---:|
+| [![Supabase — Table Editor](docs/screenshot-supabase-console.png)](docs/screenshot-supabase-console.png) | [![Supabase — project overview](docs/screenshot-supabase-overview.png)](docs/screenshot-supabase-overview.png) |
+
+### 7 · FastAPI enrichment brain
+
+Interactive OpenAPI docs at `http://localhost:8000/docs` — `/enrich`, `/sensitivity`, `/search`, `/compare`, `/digest/preview`, `/metrics`:
+
+[![FastAPI OpenAPI / REST docs](docs/screenshot-fastapi.png)](docs/screenshot-fastapi.png)
+
+### 8 · Self-hosted stack — n8n in Docker
+
+The same SecOps rubric running on the self-hosted Docker path (`incoming_docs/` watcher → FastAPI `/enrich`):
+
+[![Local n8n (Docker)](docs/screenshot-n8n-local-setup.png)](docs/screenshot-n8n-local-setup.png)
+
+> 💻 **REST API examples** (curl + JSON response showing the CVSS floor in action) are in [REST API in action](#rest-api-in-action) below.
+
+---
+
 ## Technology stack
 
 | Area | Technology |
@@ -298,6 +368,8 @@ node scripts\e2e_cloud_form.mjs
 ---
 
 ## Screenshots & evidence
+
+🖼️ **Every screenshot is embedded inline in the [📸 See it working](#-see-it-working) gallery above** — this table is the complete index with file paths and how each artifact was produced.
 
 | Artifact | Path | Source |
 |---|---|---|
