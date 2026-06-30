@@ -12,7 +12,7 @@
 [![Gemini](https://img.shields.io/badge/Gemini-3%20Flash%20%2B%20Vision-4285F4)](#technology-stack)
 [![bonuses](https://img.shields.io/badge/bonus%20challenges-8%2F8-success)](#bonus-challenges)
 
-[Architecture](#architecture) · [Quick start](#quick-start) · [Course mapping](#course-requirement-mapping) · [Bonus challenges](#bonus-challenges) · [Docs](#documentation)
+[Summary](#project-summary) · [Architecture](#architecture) · [Use cases](#use-cases) · [Flow](#end-to-end-flow) · [Tools](#tools--integrations) · [Prompts](#system-prompts) · [Screenshots](#-see-it-working) · [Quick start](#quick-start) · [Docs](#documentation)
 
 **👩‍🏫 Reviewing this project?** → [`docs/REVIEWER-ACCESS.md`](docs/REVIEWER-ACCESS.md) — verify end-to-end with **no login** (public form, importable workflow, local Docker, screenshots).
 
@@ -28,6 +28,20 @@ HINDSIGHT implements the **Cybersecurity incident logs** scenario from the n8n *
 > CVSS 9.8 on a Nessus report floors to **SEV1** and `routing_tag=escalate` even when the author typed SEV3.
 
 This mirrors real enterprise Document Intelligence systems used in SecOps, legal, finance, and HR — cloud AI APIs processing documents daily with OAuth, rate limits, retries, and structured JSON contracts.
+
+---
+
+## Use cases
+
+| # | Scenario | Pipeline path | Bonus |
+|---|----------|---------------|-------|
+| 1 | **Vuln scan upload** (Nessus/OpenSSL RCE) | Form → Gemini → enrich (CVSS floor) → Sheet + email | BON-6 compare |
+| 2 | **Phishing investigation** report | Same pipeline · sensitivity + routing tags | BON-8 alert |
+| 3 | **SIEM / intrusion** writeup | Batch or single · semantic index | BON-5 search |
+| 4 | **PDF with embedded charts** | Vision branch extracts chart context | BON-1 |
+| 5 | **ZIP batch upload** | Fan-out one item per document | BON-7 |
+| 6 | **Daily SOC digest** | Scheduled workflow · 24h rollup | BON-2 |
+| 7 | **Live dashboard** | Chart.js reads published Sheet CSV | BON-3 |
 
 ---
 
@@ -100,6 +114,33 @@ flowchart LR
 | 🩷 Dashboard | **`dashboard/index.html`** | Live stats from published Sheet CSV |
 
 Diagram source: [`docs/architecture.svg`](docs/architecture.svg) → PNG via `scripts/render_architecture.mjs` · deep dive: [`docs/architecture.md`](docs/architecture.md) · bonus flows: [`docs/bonus-challenges.md`](docs/bonus-challenges.md)
+
+---
+
+## End-to-end flow
+
+<details>
+<summary><b>Pipeline sequence</b> — intake → extract → Gemini → enrich → outputs</summary>
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as Analyst / Form
+  participant N as n8n
+  participant G as Gemini 3 Flash
+  participant E as Enrich (FastAPI/JS)
+  participant Out as Sheets · Gmail · Files
+
+  U->>N: Upload SIEM / vuln / phishing doc
+  N->>N: Prepare · guards · optional Vision
+  N->>G: Strict JSON extraction (temp 0.2)
+  G-->>N: incident JSON
+  N->>E: POST /enrich — CVSS floor · routing
+  E-->>N: computed_severity · routing_tag
+  N->>Out: Append row · email · output_docs/
+```
+
+</details>
 
 **Live Cloud workflow** (`aYEv22StywIPL3Rq`) — the deployed pipeline, including the non-blocking **BON-6** Flash-vs-Pro compare branch and the **BON-8** SEV1/confidential alert routing:
 
@@ -178,6 +219,35 @@ The same SecOps rubric running on the self-hosted Docker path (`incoming_docs/` 
 [![Local n8n (Docker)](docs/screenshot-n8n-local-setup.png)](docs/screenshot-n8n-local-setup.png)
 
 > 💻 **REST API examples** (curl + JSON response showing the CVSS floor in action) are in [REST API in action](#rest-api-in-action) below.
+
+---
+
+## Tools & integrations
+
+| Integration | Role |
+|-------------|------|
+| **n8n Cloud + Docker** | Workflow orchestration — form, HTTP, Sheets, Gmail |
+| **Gemini 3 Flash + Vision** | Structured JSON extraction · embedded PDF charts |
+| **FastAPI enrichment API** | Deterministic severity, sensitivity, routing, search |
+| **Google Sheets** | 14-column `Incidents` registry |
+| **Gmail OAuth2** | Per-document + SEV1 page + daily digest |
+| **Supabase pgvector** | Semantic search (BON-5) · `gemini-embedding-001` |
+
+### FastAPI enrichment API
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/enrich` | POST | Core enrichment — severity floor, sensitivity, routing |
+| `/health` | GET | Health probe `{"status":"ok"}` |
+| `/categories` | GET | SecOps service catalog |
+| `/sensitivity` | POST | Standalone sensitivity classification |
+| `/search` | POST | Semantic search (BON-5) |
+| `/index` | POST | Index document embedding |
+| `/compare` | POST | Flash vs Pro extraction diff (BON-6) |
+| `/digest/preview` | POST | Daily digest HTML preview (BON-2) |
+| `/metrics` | GET | Prometheus-style counters |
+
+Catalog: `services/enrichment-api/data/service_catalog.yaml` · interactive docs: **http://localhost:8000/docs** ([screenshot](docs/screenshot-fastapi.png))
 
 ---
 
@@ -481,7 +551,7 @@ Bootstrap headers: `.\.venv\Scripts\python.exe scripts\bootstrap_incidents_tab.p
 
 ---
 
-## Prompts
+## System prompts
 
 | File | Used by |
 |---|---|
@@ -495,12 +565,15 @@ Live prompt body: `n8n/cloud/nodes/prepare.js` → synced to Cloud.
 ## Documentation
 
 | Doc | Contents |
-|---|---|
+|-----|----------|
 | [`docs/SETUP-GUIDE.md`](docs/SETUP-GUIDE.md) | Manual checklist — credentials, sheet, form URL |
 | [`n8n/SETUP.md`](n8n/SETUP.md) | Self-hosted n8n import + Docker paths |
 | [`docs/edge-case-matrix.md`](docs/edge-case-matrix.md) | Edge cases + parity notes |
 | [`docs/bonus-challenges.md`](docs/bonus-challenges.md) | All 8 bonuses with diagrams |
 | [`docs/VALIDATION.md`](docs/VALIDATION.md) | Test counts + screenshot index |
+| [`docs/REVIEWER-ACCESS.md`](docs/REVIEWER-ACCESS.md) | No-login reviewer path |
+
+Built by [Re'em Mor](https://github.com/reem-mor) · [AI Engineering Portfolio](https://github.com/reem-mor/ai-engineering-portfolio)
 
 ---
 
