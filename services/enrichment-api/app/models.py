@@ -1,6 +1,6 @@
 """API contracts (Pydantic v2).
 
-The input model mirrors what Gemini returns for a postmortem; the output model
+The input model mirrors what Gemini returns for an incident log; the output model
 is the enriched record that n8n appends to the Sheets incident registry and
 feeds into the Gmail notification.
 """

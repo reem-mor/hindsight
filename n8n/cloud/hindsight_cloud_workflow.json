@@ -1,5 +1,5 @@
 {
-  "name": "HINDSIGHT \u2014 Postmortem Intelligence (Cloud)",
+  "name": "HINDSIGHT \u2014 Intelligent Cloud Document Analyst (Cloud)",
   "nodes": [
     {
       "parameters": {
@@ -26,7 +26,7 @@
         }
       },
       "id": "f9fe9a2e-e94d-49b7-b8cf-bda4700392ff",
-      "name": "Submit a Postmortem",
+      "name": "Submit an Incident Log",
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.2,
       "position": [
@@ -370,7 +370,7 @@
         }
       },
       "id": "a1ba26de-96be-46f3-b97b-844afbb44321",
-      "name": "Postmortem Filed",
+      "name": "Incident Filed",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
@@ -474,7 +474,7 @@
     },
     {
       "parameters": {
-        "content": "### 5 \u00b7 Gmail routing\n\n**Is SEV1?** \u2192 SEV1 / confidential / escalate fire a high-priority **Page On-Call (BON-8)**.\n\nEverything else files a *Postmortem Filed* notice. A separate scheduled workflow sends the 24h digest **(BON-2)**.",
+        "content": "### 5 \u00b7 Gmail routing\n\n**Is SEV1?** \u2192 SEV1 / confidential / escalate fire a high-priority **Page On-Call (BON-8)**.\n\nEverything else files an *Incident Filed* notice. A separate scheduled workflow sends the 24h digest **(BON-2)**.",
         "height": 250,
         "width": 500,
         "color": 7
@@ -548,7 +548,7 @@
     }
   ],
   "connections": {
-    "Submit a Postmortem": {
+    "Submit an Incident Log": {
       "main": [
         [
           {
@@ -635,7 +635,7 @@
         ],
         [
           {
-            "node": "Postmortem Filed",
+            "node": "Incident Filed",
             "type": "main",
             "index": 0
           }

@@ -31,9 +31,7 @@ DOCX on Cloud would be UTF-8 garbage through the text path; use `docker compose`
 
 `GEMINI_API_KEY` and `GOOGLE_OAUTH_*` in amdocs course files are **placeholders or empty**. Live OAuth for Sheets and Gmail lives in the **n8n Cloud credential vault** only. You verify/reconnect in the n8n UI — you cannot copy them from `amdocs-ai-course` files.
 
-What *does* merge from amdocs: `N8N_API_KEY`, optional dev keys (`CONTEXT7_API_KEY`, etc.) via `scripts/merge_amdocs_env.py`.
-
-**MCP (optional dev):** `.cursor/mcp.json` — `n8n-workflows`, `playwright`, `context7`. Reload MCP after editing `.env`.
+The repo `.env` (from `.env.example`) only needs `N8N_API_KEY` for the operational scripts.
 
 ---
 
@@ -41,8 +39,7 @@ What *does* merge from amdocs: `N8N_API_KEY`, optional dev keys (`CONTEXT7_API_K
 
 ```powershell
 cd c:\dev\hindsight
-copy .env.example .env
-.\.venv\Scripts\python.exe scripts\merge_amdocs_env.py
+copy .env.example .env    # then fill N8N_API_KEY
 ```
 
 | Variable | Source |
@@ -50,7 +47,7 @@ copy .env.example .env
 | `N8N_API_KEY` | n8n Cloud → Settings → API |
 | `N8N_API_URL` | Defaults to `https://reemmor.app.n8n.cloud` (never overwritten by placeholder) |
 | `HINDSIGHT_SHEET_ID` | Optional; default `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk` |
-| `N8N_SHEETS_CRED_ID` | **Required only** by `setup_n8n_hindsight.py` / `bootstrap_incidents_tab.py` — the n8n Google Sheets credential **ID** (from the n8n vault, not a secret). These scripts fail fast if it is unset; no vault IDs are hardcoded in the repo. |
+| `N8N_SHEETS_CRED_ID` | **Required only** by `bootstrap_incidents_tab.py` — the n8n Google Sheets credential **ID** (from the n8n vault, not a secret). The script fails fast if it is unset; no vault IDs are hardcoded in the repo. |
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest services\enrichment-api -q
@@ -70,7 +67,7 @@ Open: https://reemmor.app.n8n.cloud/workflow/aYEv22StywIPL3Rq
 |---|---|
 | `Google Gemini(PaLM) Api account` | Gemini — Extract Incident |
 | `Google Sheets Amdocs Course API` | Append to Registry |
-| `Gmail Amdocs course API` | Page On-Call / Postmortem Filed |
+| `Gmail Amdocs course API` | Page On-Call / Incident Filed |
 
 ### Google Sheet
 
@@ -86,9 +83,7 @@ Patch workflow + node bodies from repo:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\sync_n8n_cloud_nodes.py
-# Sheet ID + Incidents tab bootstrap:
-.\.venv\Scripts\python.exe scripts\setup_n8n_hindsight.py 1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk
-# Or tab/headers only:
+# Incidents tab + headers:
 .\.venv\Scripts\python.exe scripts\bootstrap_incidents_tab.py
 ```
 
@@ -103,7 +98,7 @@ Patch workflow + node bodies from repo:
 
 ### Activate + live test
 
-**Production form URL:** `https://reemmor.app.n8n.cloud/form/21593841-f8b8-43a2-88a8-8595ad3e2f39` (see 📸 `docs/screenshot-form-cloud.png`)
+**Production form URL:** `https://reemmor.app.n8n.cloud/form/21593841-f8b8-43a2-88a8-8595ad3e2f39` (see 📸 `screenshots/01-form-upload.png`)
 
 1. Toggle workflow **Active**
 2. Submit `samples/vuln_scan_critical_openssl.md` via the form above
@@ -140,7 +135,7 @@ Import `n8n/hindsight_workflow.json`, configure credentials per `n8n/SETUP.md`, 
 | Bonus | Implementation |
 |---|---|
 | **BON-1 Vision** | Self-hosted Vision branch; cloud PDF `inline_data`; `samples/vuln_scan_sev1_critical_rce.pdf` |
-| **BON-2 Daily Digest** | Import `n8n/cloud/digest_workflow.json` (run `build_digest_workflow.py` first); cron 08:00 UTC |
+| **BON-2 Daily Digest** | Import `n8n/cloud/digest_workflow.json`; cron 08:00 UTC |
 | **BON-3 Dashboard** | `dashboard/index.html`; optional live CSV via `?csv=` query param |
 | **BON-4 Retry** | Gemini 5× / 3s — verified by `audit_n8n_cloud.py` |
 | **BON-5 Semantic Search** | Apply `migrations/001_pgvector_incidents.sql`; set `SUPABASE_*` in `.env`; `POST /search` |
@@ -154,21 +149,17 @@ Import `n8n/hindsight_workflow.json`, configure credentials per `n8n/SETUP.md`, 
 
 | Script | Purpose |
 |---|---|
-| `merge_amdocs_env.py` | Pull keys into `.env` |
-| `setup_n8n_hindsight.py` | Patch spreadsheet ID on Cloud workflow |
 | `sync_n8n_cloud_nodes.py` | Push `n8n/cloud/nodes/*.js` + Flatten node to Cloud |
 | `patch_cloud_workflow.py` | BON-7 zip accept, BON-8 alert routing, BON-4 retry |
-| `activate_n8n_cloud.py` | Activate grading workflow |
-| `build_digest_workflow.py` | Inject digest JS into digest workflow JSON |
 | `bootstrap_incidents_tab.py` | Create `Incidents` tab + header row via n8n |
-| `audit_n8n_cloud.py` | Health report → `docs/n8n-cloud-audit.json` |
-| `capture_screenshots.mjs` | Dashboard + FastAPI screenshots |
-| `render_architecture.mjs` | Export `docs/architecture.png` |
+| `import_selfhosted_workflow.py` | Import the workflow into Docker n8n |
+| `docker_smoke_test.py` | Post-compose health + enrich smoke test |
+| `audit_n8n_cloud.py` | Read-only Cloud health report |
 
 ---
 
 ## 8. Related docs
 
-- [`docs/traceability-matrix.md`](traceability-matrix.md) — grading map
+- [`docs/ASSIGNMENT-MAP.md`](ASSIGNMENT-MAP.md) — requirement → evidence map
 - [`docs/VALIDATION.md`](VALIDATION.md) — test commands + evidence
 - [`n8n/cloud/README.md`](../n8n/cloud/README.md) — Cloud node bodies

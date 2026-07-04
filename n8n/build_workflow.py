@@ -44,7 +44,7 @@ Y0 = 300
 nodes = []
 
 trigger = node(
-    "📂 New postmortem", "n8n-nodes-base.localFileTrigger", 1, X[0], Y0,
+    "📂 New incident log", "n8n-nodes-base.localFileTrigger", 1, X[0], Y0,
     {
         "triggerOn": "folder",
         "path": "/data/incoming_docs",
@@ -419,7 +419,7 @@ def conn(src, dst, src_out=0, dst_in=0):
     return src, dst, src_out, dst_in
 
 links = [
-    ("📂 New postmortem", "🗜 Extract text + images"),
+    ("📂 New incident log", "🗜 Extract text + images"),
     ("🗜 Extract text + images", "Parse extraction"),
     ("Parse extraction", "Has dashboard image?"),
     # IF true -> vision ; IF false -> straight to merge(passthrough)
@@ -480,7 +480,7 @@ workflow = {
     "settings": {"executionOrder": "v1", "saveManualExecutions": True,
                  "callerPolicy": "workflowsFromSameOwner"},
     "tags": [{"name": "hindsight"}, {"name": "sre"}],
-    "meta": {"templateid": "hindsight-postmortem-intelligence"},
+    "meta": {"templateid": "hindsight-cyber-incident-intelligence"},
 }
 
 with open(os.path.join(ROOT, "hindsight_workflow.json"), "w") as f:

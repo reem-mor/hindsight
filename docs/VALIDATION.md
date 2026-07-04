@@ -15,7 +15,6 @@ Assignment mapping: [ASSIGNMENT-MAP.md](ASSIGNMENT-MAP.md) · Bonus detail: [bon
 | Cloud `compose` | §7.2 row + §8.2 subject contract + Sheet link | 8 | ✅ |
 | Bonus Code nodes | digest severity-from-CVSS + compare diff/type-mismatch/overlap (BON-2/6) | 9 | ✅ |
 | Self-hosted workflow | every Code-node parses + §8.2 subject + output_docs JSON & MD + retry | 20 | ✅ |
-| `verify_all_bonuses.py` | All 8 bonuses + workflow activation | 10 | ✅ |
 | `docker_smoke_test.py` | Docker compose health + enrich smoke (Supabase optional) | 5 | ✅ |
 | `audit_n8n_cloud.py` | Nodes, credentials, retry, Gemini model | 1 report | ✅ |
 | Live E2E | Form → Gemini → Sheet → Gmail (+BON-6 Flash/Pro branch) | exec 759 · 757 · 510 | ✅ |
@@ -30,11 +29,8 @@ node n8n\cloud\tests\test_node_bodies.mjs
 node n8n\cloud\tests\test_prepare.mjs
 node n8n\cloud\tests\test_compose.mjs
 node n8n\cloud\tests\test_bonus_nodes.mjs
-.\.venv\Scripts\python.exe scripts\verify_all_bonuses.py
 .\.venv\Scripts\python.exe scripts\docker_smoke_test.py
 .\.venv\Scripts\python.exe scripts\audit_n8n_cloud.py
-node scripts\render_architecture.mjs
-node scripts\capture_screenshots.mjs
 ```
 
 Cloud deploy (mutating):
@@ -51,10 +47,10 @@ Cloud deploy (mutating):
 | Bonus | Proof |
 |---|---|
 | **BON-1 Vision** | `tests/test_extractor.py` extracts `samples/vuln_scan_sev1_critical_rce.pdf` text **and asserts an embedded image is exported**; self-hosted Vision node; Cloud PDF inline |
-| **BON-2 Daily Digest** | `test_digest.py`; `digest_aggregate.js`; `build_digest_workflow.py` |
-| **BON-3 Dashboard** | `dashboard/index.html`; `?csv=`; 📸 `screenshot-dashboard.png` |
+| **BON-2 Daily Digest** | `test_digest.py`; `digest_aggregate.js`; `n8n/cloud/digest_workflow.json` |
+| **BON-3 Dashboard** | `dashboard/index.html`; `?csv=`; 📸 `../screenshots/12-bonus-dashboard.png` |
 | **BON-4 Retry** | audit `Gemini retry policy (BON-4)` OK |
-| **BON-5 Semantic Search** | `test_search.py` (InMemory + SupabaseVectorStore); `migrations/001_pgvector_incidents.sql`; live Supabase 5 rows · `gemini-embedding-001` 768-dim · HNSW · `match_*` RPC · real console: `screenshot-supabase-console.png` + `screenshot-supabase-overview.png` |
+| **BON-5 Semantic Search** | `test_search.py` (InMemory + SupabaseVectorStore); `migrations/001_pgvector_incidents.sql`; live Supabase 5 rows · `gemini-embedding-001` 768-dim · HNSW · `match_*` RPC · real console: `../screenshots/13-bonus-supabase-pgvector.png` + `../screenshots/14-bonus-supabase-project.png` |
 | **BON-6 Compare** | `test_compare.py`; `POST /compare`; **wired in Cloud wf** `Gemini — Extract (Pro)` (`gemini-3.1-pro-preview`) → `Parse Gemini Pro` → `Compare Models`; live exec 759 (agreement=true, entity-overlap 0.90) |
 | **BON-7 Batch** | `test_batch.py`; `test_prepare.mjs` zip; `batch_incidents.zip` |
 | **BON-8 Alerting** | `patch_cloud_workflow.py`; `build_workflow.py`; exec 507 Page On-Call |
@@ -67,11 +63,11 @@ See [edge-case-matrix.md](edge-case-matrix.md) — zero-byte, MIME mismatch, par
 
 | Asset | Path | How to refresh |
 |---|---|---|
-| Figure 1 architecture | `docs/architecture.png` | `node scripts/render_architecture.mjs` |
-| Dashboard (BON-3) | `docs/screenshot-dashboard.png` | `node scripts/capture_screenshots.mjs` |
-| FastAPI OpenAPI | `docs/screenshot-fastapi.png` | same |
-| Local n8n UI | `docs/screenshot-n8n-local-setup.png` | same (Docker on :5678) |
-| Cloud form (grading intake) | `docs/screenshot-form-cloud.png` | Playwright MCP public form URL |
+| Figure 1 architecture | `docs/architecture.png` | rendered from `docs/architecture.mmd` |
+| Dashboard (BON-3) | `screenshots/12-bonus-dashboard.png` | live capture |
+| FastAPI OpenAPI | `screenshots/07-fastapi-docs.png` | live capture |
+| Local n8n UI | `screenshots/08-n8n-docker.png` | live capture (Docker on :5678) |
+| Cloud form (grading intake) | `screenshots/01-form-upload.png` | Playwright MCP public form URL |
 
 ## 6. Live E2E
 

@@ -1,7 +1,7 @@
 # AGENTS.md — HINDSIGHT
 
-> Shared project brief for AI coding agents. Cursor reads this natively (root + subdirs);
-> Claude Code reads it via a one-line `CLAUDE.md` that imports this file. Single source of truth.
+> Shared project brief for AI coding agents; Claude Code reads it via a one-line `CLAUDE.md`
+> that imports this file. Single source of truth.
 > Environment: Windows, PowerShell, repo at `c:\dev\hindsight`, virtualenv at repo root `.venv`.
 
 ## What this is
@@ -35,9 +35,10 @@ Two execution paths share the same SecOps rubric:
 | `prompts/` | `extraction_prompt.md`, `vision_prompt.md`. |
 | `dashboard/index.html` | Live dashboard (CVSS / sensitivity / routing_tag); reads a published-sheet CSV via `?csv=`. |
 | `samples/` | Cyber incident fixtures (`.md`, generated `.pdf`, `batch_incidents.zip`). |
-| `scripts/` | Operational tooling: audit / sync / bootstrap / poll executions / screenshots / render architecture / merge env. |
+| `scripts/` | Operational tooling: sync Cloud nodes / bootstrap sheet / import workflow / smoke test / read-only audit. |
 | `migrations/001_pgvector_incidents.sql` | Supabase pgvector schema for semantic search (BON-5). |
-| `docs/` | `SETUP-GUIDE.md` (manual checklist), `VALIDATION.md`, `architecture.*`, `traceability-matrix.md`, `edge-case-matrix.md`, screenshots. |
+| `docs/` | `SETUP-GUIDE.md` (manual checklist), `ASSIGNMENT-MAP.md`, `VALIDATION.md`, `architecture.*`, `edge-case-matrix.md`. |
+| `screenshots/` | Evidence captures, numbered by pipeline step. |
 
 ## Commands
 
@@ -73,14 +74,12 @@ docker compose up --build -d   # n8n → http://localhost:5678 ; enrichment → 
 **Cloud sync / setup (mutating — run deliberately):**
 ```powershell
 .\.venv\Scripts\python.exe scripts\sync_n8n_cloud_nodes.py                       # push n8n/cloud/nodes/*.js to the live workflow
-.\.venv\Scripts\python.exe scripts\setup_n8n_hindsight.py 1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk
-.\.venv\Scripts\python.exe scripts\bootstrap_incidents_tab.py                    # headers only
+.\.venv\Scripts\python.exe scripts\bootstrap_incidents_tab.py                    # Incidents tab + headers
 ```
 
 **Environment bootstrap:**
 ```powershell
-copy .env.example .env
-.\.venv\Scripts\python.exe scripts\merge_amdocs_env.py   # merges N8N_API_KEY etc. from the sibling course repo
+copy .env.example .env   # then fill N8N_API_KEY (n8n Cloud -> Settings -> API)
 ```
 
 ## Conventions
@@ -92,7 +91,7 @@ copy .env.example .env
 
 ## Guardrails (do not)
 
-- **Never commit secrets.** `.env` and `*.key` are gitignored; live Gemini / Google OAuth credentials exist **only** in the n8n Cloud credential vault, never in the repo. (See `.cursor/rules/secrets-and-mcp-security.mdc` for the MCP env-interpolation specifics.)
+- **Never commit secrets.** `.env` and `*.key` are gitignored; live Gemini / Google OAuth credentials exist **only** in the n8n Cloud credential vault, never in the repo.
 - **`n8n/cloud/nodes/*.js` is the source of truth.** Edit node bodies there, then run `sync_n8n_cloud_nodes.py`. Do not hand-edit nodes in the Cloud UI.
 - **Don't break the data contracts:** the Google Sheet `Incidents` tab headers and the JSON schema the Code nodes parse. Sheet headers (assignment §7.2 + cyber bonus):
   `document_id | filename | file_type | processed_at | classification | department | sentiment | confidence_score | summary | routing_tag | sensitivity | action_items | cvss_score | cve_ids`
