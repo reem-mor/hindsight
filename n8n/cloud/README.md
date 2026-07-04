@@ -2,7 +2,7 @@
 
 Cyber incident log pipeline for **n8n Cloud** (no local FS / Execute Command).
 
-- **Workflow:** `HINDSIGHT — Postmortem Intelligence (Cloud)` · id `aYEv22StywIPL3Rq`
+- **Workflow:** `HINDSIGHT — Intelligent Cloud Document Analyst (Cloud)` · id `aYEv22StywIPL3Rq`
 - **Instance:** https://reemmor.app.n8n.cloud
 
 ## Flow

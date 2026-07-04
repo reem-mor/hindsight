@@ -6,7 +6,7 @@ Maps course brief §9 to implementation, architecture, tests, and evidence.
 |---|---|---|---|---|---|
 | BON-1 | Gemini Vision | Self-hosted Vision HTTP node; Cloud PDF `inline_data` in `prepare.js` | [architecture.md](architecture.md) § BON-1 | `test_extractor.py` (PDF + image) | `samples/vuln_scan_sev1_critical_rce.pdf` |
 | BON-2 | Daily Email Digest | `digest_workflow.json` + `digest_aggregate.js` (24h window) | [architecture.md](architecture.md) § BON-2 | `test_digest.py`, `test_bonus_nodes.mjs` | Import digest workflow; cron 08:00 UTC |
-| BON-3 | Live Dashboard | `dashboard/index.html` + `?csv=` published Sheet URL | [architecture.md](architecture.md) § BON-3 | fixture CSV server in tests | 📸 `screenshot-dashboard.png` |
+| BON-3 | Live Dashboard | `dashboard/index.html` + `?csv=` published Sheet URL | [architecture.md](architecture.md) § BON-3 | fixture CSV server in tests | 📸 `../screenshots/12-bonus-dashboard.png` |
 | BON-4 | Retry logic | Gemini HTTP `retryOnFail` 5× / 3s | workflow config | `audit_n8n_cloud.py` | audit row OK |
 | BON-5 | Semantic Search | Supabase pgvector (`gemini-embedding-001`, 768-dim) + `POST /search`, `/index` | [architecture.md](architecture.md) § BON-5 | `test_search.py` (InMemory + SupabaseVectorStore) | live Supabase `zduaexkkhdnltyelvuwn` · 5 rows · HNSW · `match_*` RPC (MCP-verified 2026-06-26) |
 | BON-6 | Multi-model Compare | **Cloud workflow** `Gemini — Extract (Pro)` → `Parse Gemini Pro` → `Compare Models` (non-blocking, failure-isolated); also `POST /compare`; `compare_models.js` | [architecture.md](architecture.md) § BON-6 | `test_compare.py`, bonus node test | live exec 759 (Flash vs `gemini-3.1-pro-preview`); [sample-outputs/compare-flash-vs-pro.md](sample-outputs/compare-flash-vs-pro.md) |
@@ -34,15 +34,12 @@ Cloud grading path sends PDF bytes via `inline_data` without Execute Command (n8
 flowchart TD
   E[HINDSIGHT Enrich output] --> IF{SEV1 OR confidential OR escalate?}
   IF -->|yes| Page[Page On-Call Gmail high priority]
-  IF -->|no| Digest[Postmortem Filed digest email]
+  IF -->|no| Digest[Incident Filed email]
   E --> Sheets[Append to Registry always]
 ```
 
 ## Commands
 
 ```powershell
-node scripts\render_architecture.mjs
-node scripts\capture_screenshots.mjs
-.\.venv\Scripts\python.exe scripts\build_digest_workflow.py
 .\.venv\Scripts\python.exe scripts\patch_cloud_workflow.py
 ```

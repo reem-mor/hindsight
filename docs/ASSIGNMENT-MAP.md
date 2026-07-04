@@ -14,7 +14,7 @@ Legend: ✅ automated · 📸 screenshot · ⚙️ config · ✋ live credential
 | Multi-modal (Vision) | Self-hosted PyMuPDF + Vision branch; Cloud PDF `inline_data` | `test_extractor.py` ✅ BON-1 |
 | Python microservice | `services/enrichment-api/` FastAPI | pytest 67 ✅ |
 | Google Sheets registry | Append to Registry + `sheet_row.js` flatten | audit + 📸 sheet |
-| Gmail notifications | Page On-Call + Postmortem Filed | audit + 📸 email |
+| Gmail notifications | Page On-Call + Incident Filed | audit + 📸 email |
 | Retries & logging | Gemini 5×/3s; enrichment 3× | audit BON-4 ✅ |
 
 ## §3 System architecture (DIAG-1)
@@ -29,7 +29,7 @@ Legend: ✅ automated · 📸 screenshot · ⚙️ config · ✋ live credential
 
 | Step | Assignment | Cloud node | Self-hosted | Test |
 |---|---|---|---|---|
-| P1 File detection | Form / watched folder | `Submit a Postmortem` | `incoming_docs/` trigger | SETUP-GUIDE ✅ |
+| P1 File detection | Form / watched folder | `Submit an Incident Log` | `incoming_docs/` trigger | SETUP-GUIDE ✅ |
 | P2 Text + image extract | Python / Code | `prepare.js` | `extract_document.py` | `test_prepare.mjs`, `test_extractor.py` ✅ |
 | P3 Gemini JSON | HTTP POST Flash | `Gemini — Extract Incident` | same pattern | audit + parse tests ✅ |
 | P4 Metadata enrich | Student API | `HINDSIGHT Enrich` (`enrich.js`) | `POST /enrich` | pytest + node tests ✅ |
@@ -61,7 +61,7 @@ Legend: ✅ automated · 📸 screenshot · ⚙️ config · ✋ live credential
 
 ## §7 Google Sheets (REQ-S*)
 
-14 columns (§7.2 + cyber bonus): see [traceability-matrix.md](traceability-matrix.md) REQ-S2.
+14 columns (§7.2 + cyber bonus).
 Sheet ID default: `1Z7tiPISHB5siYby_lQnWA9wtXbDXVSGTu4HGZ5Dk2tk`, tab **`Incidents`**.
 
 ## §8 Gmail (REQ-M*)

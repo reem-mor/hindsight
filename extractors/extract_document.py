@@ -7,15 +7,15 @@ screenshots to Gemini Vision), and prints a single JSON object to stdout for n8n
 to parse.
 
 Usage:
-    python extract_document.py /path/to/postmortem.pdf [--image-dir /tmp/hs_images]
+    python extract_document.py /path/to/incident_log.pdf [--image-dir /tmp/hs_images]
 
 Output (stdout, JSON):
     {
-      "filename": "postmortem.pdf",
+      "filename": "incident_log.pdf",
       "file_type": "pdf",
       "extracted_text": "....",
       "char_count": 1234,
-      "images": [{"path": "/tmp/hs_images/postmortem_p1_0.png", "page": 1}],
+      "images": [{"path": "/tmp/hs_images/incident_log_p1_0.png", "page": 1}],
       "ok": true
     }
 

@@ -13,7 +13,7 @@ from n8n_cloud_api import api_get, load_dotenv, WORKFLOW_ID, SHEET_ID_DEFAULT
 GEMINI_NODE = "Gemini — Extract Incident"
 SHEETS_NODE = "Append to Registry"
 PAGE_NODE = "Page On-Call (SEV1)"
-DIGEST_NODE = "Postmortem Filed"
+DIGEST_NODE = "Incident Filed"
 REQUIRED_NODE_NAMES = {
     "Prepare Document",
     GEMINI_NODE,
@@ -68,7 +68,7 @@ def main() -> int:
     add("ok" if wf.get("active") else "review", "Workflow active", str(wf.get("active")))
 
     for name in [
-        "Submit a Postmortem",
+        "Submit an Incident Log",
         GEMINI_NODE,
         "HINDSIGHT Enrich",
         SHEETS_NODE,

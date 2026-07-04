@@ -1,6 +1,6 @@
 """HINDSIGHT Enrichment API.
 
-FastAPI service that enriches Gemini postmortem extractions with SRE/business
+FastAPI service that enriches Gemini incident-log extractions with SecOps/business
 intelligence. Designed to be operated like any production service: structured
 logs, correlation IDs, a /health probe and a Prometheus-style /metrics endpoint.
 """
@@ -54,7 +54,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.version,
     description=(
-        "Enrichment microservice for **HINDSIGHT** — turns raw Gemini postmortem "
+        "Enrichment microservice for **HINDSIGHT** — turns raw Gemini incident-log "
         "extractions into routed, scored, audit-ready incident records."
     ),
 )

@@ -16,7 +16,7 @@ n8n → **Workflows** → top-right **⋯** → **Import from File** → choose
 `hindsight_workflow.json`. You'll see the graph below.
 
 ```
-📂 New postmortem → 🗜 Extract → Parse → Has image? ─true→ 👁 Gemini Vision ─┐
+📂 New incident log → 🗜 Extract → Parse → Has image? ─true→ 👁 Gemini Vision ─┐
                                               └false────────────────────────┴→ Attach notes
    → Build prompt → 🧠 Gemini extract → Parse JSON → ⚙️ Enrich (FastAPI)
    → Compose record ┬→ Flatten → 📊 Append to registry
@@ -61,7 +61,7 @@ Open each of those nodes and select the matching credential from the dropdown
 The workflow assumes the repo is reachable from the n8n runtime at `/data`:
 
 ```
-/data/incoming_docs      ← watched folder (drop postmortems here)
+/data/incoming_docs      ← watched folder (drop incident logs here)
 /data/output_docs        ← rendered .md summaries land here
 /data/tmp_images         ← extracted dashboard images (transient)
 /data/extractors/extract_document.py
@@ -69,7 +69,7 @@ The workflow assumes the repo is reachable from the n8n runtime at `/data`:
 
 `docker-compose.yml` at the repo root already mounts the repo to `/data` inside the n8n
 container and installs PyMuPDF/python-docx, so if you bring the stack up with compose these
-paths exist with no extra work. Running n8n elsewhere? Edit the `path` on **📂 New postmortem**
+paths exist with no extra work. Running n8n elsewhere? Edit the `path` on **📂 New incident log**
 and the `--image-dir` / script path on **🗜 Extract** to wherever the repo lives.
 
 ## 5. Point the enrichment URL at the service

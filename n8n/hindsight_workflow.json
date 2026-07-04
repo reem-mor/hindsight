@@ -15,7 +15,7 @@
         }
       },
       "id": "9dda91b9-f009-4a06-8929-f8baf1924dfa",
-      "name": "\ud83d\udcc2 New postmortem",
+      "name": "\ud83d\udcc2 New incident log",
       "type": "n8n-nodes-base.localFileTrigger",
       "typeVersion": 1,
       "position": [
@@ -485,7 +485,7 @@
     }
   ],
   "connections": {
-    "\ud83d\udcc2 New postmortem": {
+    "\ud83d\udcc2 New incident log": {
       "main": [
         [
           {
@@ -695,6 +695,6 @@
     }
   ],
   "meta": {
-    "templateid": "hindsight-postmortem-intelligence"
+    "templateid": "hindsight-cyber-incident-intelligence"
   }
 }

@@ -18,9 +18,9 @@ flowchart LR
   P4 --> P6b[Gmail Page or Digest]
 ```
 
-Cloud node names: `Submit a Postmortem` → `Prepare Document` → `Gemini — Extract Incident` →
+Cloud node names: `Submit an Incident Log` → `Prepare Document` → `Gemini — Extract Incident` →
 `Parse Gemini JSON` → `HINDSIGHT Enrich` → `Compose Outputs` → `Flatten for Sheets` /
-`Page On-Call (SEV1)` / `Postmortem Filed`.
+`Page On-Call (SEV1)` / `Incident Filed`.
 BON-6 compare branch (off `Parse Gemini JSON`, non-blocking): `Gemini — Extract (Pro)` →
 `Parse Gemini Pro` → `Compare Models`.
 
@@ -94,7 +94,7 @@ flowchart LR
 flowchart TD
   E[Enrich output] --> IF{SEV1 OR confidential OR escalate?}
   IF -->|yes| Page[Page On-Call Gmail priority high]
-  IF -->|no| Digest[Postmortem Filed standard email]
+  IF -->|no| Digest[Incident Filed standard email]
   E --> Sheets[Append to Registry]
 ```
 
@@ -162,4 +162,4 @@ implement identical logic, verified by parallel test suites.
 | Search | pgvector / in-memory | Semantic incident lookup (BON-5) |
 | Insight | dashboard/index.html | Severity, CVSS, sensitivity, routing charts |
 
-Render Figure 1 PNG: `node scripts/render_architecture.mjs`
+Figure 1 PNG: `docs/architecture.png` (rendered from `docs/architecture.mmd`).
