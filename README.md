@@ -1,3 +1,15 @@
+> **Project overview for reviewers**
+>
+> **Problem:** Cybersecurity reports arrive in varied formats and require consistent classification and routing.
+>
+> **Implementation:** An n8n workflow uses Gemini for structured extraction, while a Python/FastAPI enrichment service applies deterministic severity, sensitivity and routing policies. Results can be recorded in Sheets and distributed by email.
+>
+> **See it working:** [Workflow screenshots](screenshots/) · [Architecture](docs/architecture.md) · [Validation](docs/VALIDATION.md)
+>
+> **Scope:** This repository was developed as a defined AI engineering project. It demonstrates an implemented workflow and tested components, not a claim that it operates an enterprise SOC in production.
+
+---
+
 # Intelligent Cloud Document Analyst — Cybersecurity Incident Logs
 
 Solution for the **n8n AI Engineering Project** (Google Gemini API), scenario **§10: Cybersecurity incident logs** — project name **HINDSIGHT**.
